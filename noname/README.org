@@ -1,0 +1,63 @@
+* =noname=: analysis of privacy in security protocols
+
+** Installation
+
+*** Building from source
+
+=noname= is written in Haskell.  One should have already installed GHC
+(>= 9.2.7) and cabal-install (>= 3).  If that is not the case,
+installation via [[https://www.haskell.org/ghcup/][GHCup]] is recommended.
+
+=noname= relies on an external SMT solver.  Currently, [[https://cvc5.github.io/downloads.html][cvc5]] and [[https://github.com/Z3Prover/z3][z3]] are
+supported.  Please make sure that the =cvc5= or the =z3= executable is
+in your path.
+
+The recommended way to build the =noname= tool is to simply run ~make~
+in the root folder of the project.  By default, the executable
+=noname= will be copied into the current folder.  It is also possible
+to install it to another location with ~make install DIR=<PATH>~,
+where the default is ~DIR=$HOME/.local/bin~.
+
+*** Prebuilt executable
+
+An executable (ELF file) of v0.3 is available as under the =bin=
+folder.  It has been tested on Ubuntu 22.04.3 LTS (Jammy Jellyfish).
+
+** Usage
+
+To run the tool, call ~noname~ on a file containing a protocol
+specification.  By default the verification will work up to the bound
+specified in the input file and will be fully automatic.  You can
+override the defaults to specify a bound or start interactive mode.
+In the interactive mode, the tool displays the current state of the
+symbolic execution of the protocol and requires user input to explore
+the reachable states.
+
+#+begin_example
+$ noname --help
+noname - formal verification of privacy in security protocols
+
+Usage: noname (INPUT | --stdin) [-o|--output OUTPUT] [-n|--bound INT] 
+              [-s|--solver (cvc5 | z3)] [-i|--interactive] [-q|--quiet]
+
+  Verify an (alpha, beta)-privacy specification
+
+Available options:
+  INPUT                    Read from INPUT file
+  --stdin                  Read from stdin
+  -o,--output OUTPUT       Write to OUTPUT file
+  -n,--bound INT           Set bound to INT (override bound specified in the
+                           input)
+  -s,--solver (cvc5 | z3)  The solver to use
+  -i,--interactive         Use interactive mode
+  -q,--quiet               Whether to be quiet
+  -h,--help                Show this help text
+  --version                Show version information
+#+end_example
+
+Note that =noname= is able to use multiple cores.  By default, only 1
+core is used but one can set at run time the number of cores used with
+~noname <ARGUMENTS> +RTS -N<x>~, where =x= is the number (if =x= is
+omitted, this uses all available cores).
+
+=noname= uses UTF-8 encoding for both input and output.

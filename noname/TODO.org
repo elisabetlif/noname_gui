@@ -1,0 +1,6 @@
+- Write tutorial and detailed installation instructions.
+- Improve parse error messages.
+- Implement support for type-flaw resistance.
+- Implement support for composability.
+- Investigate documentation generation with haddock.
+- Use verbosity levels.

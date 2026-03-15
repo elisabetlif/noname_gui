@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+###############################################################################
+# Runex: running example to illustrate the decision procedure and noname tool #
+# Fernet and Mödersheim: A Decision Procedure for Alpha-Beta Privacy for a    #
+#   Bounded Number of Transitions                                             #
+###############################################################################
+
+# Imported from stdOps: crypt, pk, pair
+
+Sigma0:
+public yes/0 no/0 a/0 b/0 i/0 # Different constants for the privacy domains
+       s/0 # server name
+
+Transaction ReceivePrivateKey:
+# The intruder learns the private key of the dishonest agent
+send inv(pk(i)). nil
+
+Transaction Server:
+* x in {a,b,i}.  # Pick an agent
+* y in {yes,no}. # Flip a coin
+receive M.
+try N:=dcrypt(inv(pk(s)),M) in
+  if y=yes then
+    new R.
+    send crypt(pk(x),pair(yes,N),R). nil
+  else
+    new R.
+    send crypt(pk(x),no,R). nil
+catch nil
+
+# Privacy goal:
+#
+# Standard unlinkability, the intruder should not be able to tell
+# more than every transaction is addressed to some agent x in {a,b,i}
+# and the choice y is in {yes,no}. Here ReceivePrivateKey means that the
+# intruder can use the private of the dishonest agent i to decrypt messages from
+# server to i.
+
+Bound: 2
+# EXPECTED RESULT: violated

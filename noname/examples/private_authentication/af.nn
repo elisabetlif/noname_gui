@@ -1,0 +1,118 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+###############################################################################
+# AF                                                                          #
+# Abadi and Fournet: Private Authentication, Theor. Comp. Sci. vol. 322, 2004 #
+# Variant with a relation 'talk'                                              #
+# Model from Fernet and Mödersheim: Private Authentication with Alpha-Beta    #
+# Privacy, OID 2023                                                           #
+###############################################################################
+
+# Import from stdOps: crypt, dcrypt, inv, pk, pair, proj1
+
+Sigma0:
+# Modeling two honest agents a and b, and one dishonest i
+public a/0 b/0 i/0
+# Relation to represent who is willing to talk to whom
+relation talk/2
+
+Sigma:
+private recipient/1
+
+gamma0:
+# Fixed interpretation of the relation
+talk: (a,b),(a,i),(b,a)
+
+Algebra:
+# Private destructor, the intruder cannot do that!
+recipient(crypt(pk(B),M,R))->B
+
+Transaction ReceivePrivateKey:
+# The intruder learns the private key of the dishonest agent
+send inv(pk(i)). nil
+
+Transaction Initiator:
+* xA in {a,b}.
+* xB in {a,b,i}.
+if talk(xA,xB) then
+  if xB=i then
+    new NA,R.
+    send crypt(pk(xB),pair(xA,NA),R).
+    # The recipient is dishonest, the intruder is allowed to know the actual
+    # names of the initiator and recipient, and that the initiator wants to talk
+    * talk(xA,xB) and xA=gamma(xA) and xB=gamma(xB). nil
+  else
+    new NA,R.
+    send crypt(pk(xB),pair(xA,NA),R).
+    # Both initiator and recipient are honest, and the initiator wants to talk
+    * talk(xA,xB) and xB in {a,b}. nil
+else * not(talk(xA,xB)). nil # The initiator does not want to talk
+
+Transaction Responder:
+* xB in {a,b}.
+receive M.
+try DEC:=dcrypt(inv(pk(xB)),M) in
+  try A:=proj1(DEC) in
+    if A=i then
+      if talk(xB,A) then
+        new NB,R.
+        send crypt(pk(A),NB,R).
+        # The recipient is dishonest, the intruder is allowed to know the actual
+        # name of the responder, and that the responder wants to talk
+        * xB=gamma(xB) and talk(xB,A). nil
+      else
+        new NB.
+        send NB.
+        # The responder does not want to talk to the intruder
+        * not(talk(xB,A)). nil
+    else if A in {a,b} then
+      if talk(xB,A) then
+        new NB,R.
+        # The responder wants to talk to the honest sender
+        send crypt(pk(A),NB,R). nil
+      else
+        new NB.
+        # The responder does not want to talk to the honest sender
+        send NB. nil
+    else
+      new NB.
+      # The claimed sender is not a proper agent name
+      send NB. nil
+  # The proj1 failed, so the message is encrypted but does not have the right
+  # format: send decoy
+  catch
+    new NB.
+    send NB. nil
+# The dcrypt failed, we send a decoy but also the intruder is allowed to know
+# that either this message ended up at the wrong responder or the recipient is
+# honest or the responder does not want to talk -- provided the message has the
+# right format:
+catch
+  try C:=recipient(M) in # Is it correctly encrypted for some agent C?
+    try DEC:=dcrypt(inv(pk(C)),M) in
+      try A:=proj1(DEC) in
+        # We can disregard the case that C is dishonest here, because the
+        # intruder could then already decrypt the message
+        if A in {a,b,i} and C in {a,b} then
+          new NB.
+          send NB.
+          # Either the message is for another responder, or the recipient is
+          # honest, or the responder does not want to talk
+          * not (C=xB and A=i and talk(xB,A)). nil
+        else
+          new NB.
+          send NB. nil
+      catch
+        new NB.
+        send NB. nil
+    catch
+      new NB.
+      send NB. nil
+  catch
+    new NB.
+    send NB. nil
+
+Bound: 3
+# EXPECTED RESULT: no violation

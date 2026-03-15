@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+###############################################################################
+# Runex: running example to illustrate the decision procedure and noname tool #
+# Fernet and Mödersheim: A Decision Procedure for Alpha-Beta Privacy for a    #
+#   Bounded Number of Transitions                                             #
+###############################################################################
+
+# Imported from stdOps: crypt, pk, pair
+
+Sigma0:
+public yes/0 no/0 a/0 b/0 i/0 # Different constants for the privacy domains
+       s/0 # server name
+
+Transaction ReceivePrivateKey:
+# The intruder learns the private key of the dishonest agent
+send inv(pk(i)). nil
+
+Transaction Server:
+* x in {a,b,i}. # Pick an agent
+* y in {yes,no}. # Flip a coin
+receive M.
+try N:=dcrypt(inv(pk(s)),M) in
+  if x=i then # Special case for the compromised agent
+    if y=yes then
+      new R.
+      send crypt(pk(x),pair(yes,N),R).
+      * x=i and y=yes. nil # (*1) We release the values of x and y
+    else
+      new R.
+      send crypt(pk(x),no,R).
+      * x=i and y=no. nil # (*1) We release the values of x and y
+  else # When the agent is honest, we have to release that is it not i
+    if y=yes then
+      new R.
+      send crypt(pk(x),pair(yes,N),R).
+      * not x=i. nil # (*2)
+  else
+    new R.
+    send crypt(pk(x),no,R).
+    * not x=i. nil # (*2)
+catch nil
+
+# Privacy goal:
+#
+# A softened unlinkability goal (compare to runex.nn): we accept that,
+# since a is compromised, whenever x=i, the intruder of course learns
+# that fact and as well as the value of y, so this is released (*1).
+#
+# This is still not enough (compare to runex_fix_attempt.nn): in case
+# x/=i, the intruder still finds that out, because they can observe
+# that the message does not decipher with the private key of i. (They
+# do not find out the value of y though.) Thus releasing in the x/=i
+# case that this holds is sufficient and no further privacy violations
+# occur.
+
+Bound: 2
+# EXPECTED RESULT: no violation

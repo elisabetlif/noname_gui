@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+############################################
+# Relation: toy protocol to test relations #
+############################################
+
+Sigma0:
+public a/0 b/0 c/0 d/0 ok/0
+relation r/2
+
+gamma0:
+r: (a,c),(a,d),(b,c)
+
+Transaction Relation:
+* x in {a,b}.
+* y in {c,d}.
+if r(x,y) then
+  send ok.
+  * r(x,y). nil
+else nil
+
+Bound: 1
+# EXPECTED RESULT: violated

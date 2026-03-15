@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+###############################################################################
+# AF0                                                                         #
+# Abadi and Fournet: Private Authentication, Theor. Comp. Sci. vol. 322, 2004 #
+# Variant where everybody talks to everybody, with insufficient alpha-release #
+# Model from Fernet and Mödersheim: Private Authentication with Alpha-Beta    #
+# Privacy, OID 2023                                                           #
+###############################################################################
+
+# Imported from stdOps: crypt, dcrypt, inv, pk, pair, proj1
+
+Sigma0:
+# Modeling two honest agents a and b, and one dishonest i
+public a/0 b/0 i/0
+
+Transaction ReceivePrivateKey:
+# The intruder learns the private key of the dishonest agent
+send inv(pk(i)). nil
+
+Transaction Initiator:
+* xA in {a,b}.
+* xB in {a,b,i}.
+if xB=i then
+  new NA,R.
+  send crypt(pk(xB),pair(xA,NA),R).
+  # The recipient is dishonest, the intruder is allowed to know the actual names
+  # of the initiator and recipient
+  * xA=gamma(xA) and xB=gamma(xB). nil
+else
+  new NA,R.
+  send crypt(pk(xB),pair(xA,NA),R).
+  # Both initiator and recipient are honest
+  * xB in {a,b}. nil
+
+Transaction Responder:
+* xB in {a,b}.
+receive M.
+try DEC:=dcrypt(inv(pk(xB)),M) in
+  try A:=proj1(DEC) in
+    if A=i then
+      new NB,R.
+      send crypt(pk(A),NB,R).
+      # The recipient is dishonest, the intruder is allowed to know the actual
+      # name of the responder
+      * xB=gamma(xB). nil
+    else
+      new NB,R.
+      send crypt(pk(A),NB,R). nil
+  # The proj1 failed, so the message is encrypted but does not have the right
+  # format: send decoy
+  catch
+    new NB.
+    send NB. nil
+# The dcrypt failed, so the message does not have the right format: send decoy
+catch
+  new NB.
+  send NB. nil
+
+Bound: 2
+# EXPECTED RESULT: violated

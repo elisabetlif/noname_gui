@@ -1,0 +1,18 @@
+Privacy violation found after 2 transactions.
+alpha = x2∈{t1,t2,t3}∧x1∈{t1,t2,t3}
+beta_0 = x1=x2
+(alpha, beta_0)-privacy does not hold.
+Model found: x1=t1∧x2=t3
+State: Executed = Compromise.Compromise
+Recipe choice = []
+alpha_0 = x2∈{t1,t2,t3}∧x1∈{t1,t2,t3}
+beta_0 = x1=x2
+gamma_0 = ⊤
+Possibilities = {(nil,x1=x2,[-l1(✓(✓))->sk(x1).-l2(✓(✓))->sk(x2)],{},⊤,[status[x2]:=owned.status[x1]:=owned])}
+Checked = {(l1,l2)}
+SatResult: Satisfiable. Model:
+  t1 = -1 :: Integer
+  t2 =  0 :: Integer
+  t3 =  1 :: Integer
+  x2 =  1 :: Integer
+  x1 = -1 :: Integer

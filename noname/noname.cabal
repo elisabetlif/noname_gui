@@ -1,0 +1,86 @@
+cabal-version:      3.0
+name:               noname
+version:            0.3
+synopsis:           Formal verification of privacy in security protocols.
+description:
+  This tool is an implementation of a decision procedure for \(\alpha,
+  \beta)\)-privacy, for a bounded number of transitions. Write the specification
+  of a security protocol and verify whether the privacy goals are achieved. In
+  case there is a privacy violation, the tool shows a reachable state of the
+  protocol in which the intruder has learned more information than what is
+  allowed.
+
+license:            BSD-3-Clause
+license-file:       LICENSES/BSD-3-Clause.txt
+author:             Laouen Fernet
+maintainer:         lpkf@dtu.dk
+bug-reports:        mailto:lpkf@dtu.dk
+copyright:          2023 Technical University of Denmark
+category:           Formal Methods
+build-type:         Simple
+extra-source-files: Makefile
+extra-doc-files:
+  CHANGELOG.org
+  CONTRIBUTORS.org
+  README.org
+  TODO.org
+
+data-files:
+  examples/**/*.nn
+  tests/golden/*.golden
+
+common settings
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wcompat -Wpartial-fields -Wredundant-constraints
+
+library
+  import:          settings
+  hs-source-dirs:  src
+  exposed-modules:
+    Noname
+    Noname.Analysis
+    Noname.ComposeChecks
+    Noname.Evaluation
+    Noname.LazyIntruder
+    Noname.NonDetState
+    Noname.Parser
+    Noname.Pretty
+    Noname.Reachability
+    Noname.State
+    Noname.Unification
+    Noname.Verification
+
+  build-depends:
+    , base                >=4.16   && <5
+    , containers
+    , megaparsec          >=9.0
+    , parser-combinators  >=1.0.0
+    , sbv                 >=10.1
+    , text                >=2.1
+    , transformers
+    , unliftio            >=0.2.10
+
+executable noname
+  import:         settings
+  ghc-options:    -O2 -threaded
+  hs-source-dirs: app
+  main-is:        Main.hs
+  build-depends:
+    , base
+    , noname
+    , optparse-applicative
+    , text
+
+test-suite golden-tests
+  import:         settings
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is:        GoldenTests.hs
+  build-depends:
+    , base
+    , bytestring
+    , filepath
+    , noname
+    , tasty
+    , tasty-golden
+    , text

@@ -1,0 +1,17 @@
+Privacy violation found after 3 transactions.
+alpha = x2∈{t1,t2}∧x1∈{t1,t2}
+beta_0 = x2=x1
+(alpha, beta_0)-privacy does not hold.
+Model found: x1=t2∧x2=t1
+State: Executed = Challenge.Challenge.Response
+Recipe choice = [R1->l3,R3->l6,R5->l1,R6->l6]
+alpha_0 = x2∈{t1,t2}∧x1∈{t1,t2}
+beta_0 = x2=x1
+gamma_0 = ⊤
+Possibilities = {(nil,x2=x1,[-l1(✓(✓,✓))->session(x1,n1).-l2(✓)->n1.-l3(+(✓(✓),✓,✓))->scrypt(sk(x1),n1,fixedR).+R2->X2.-l4(✓(✓,✓))->session(x2,n2).-l5(✓)->n2.-l6(+(✓(✓),✓,✓))->scrypt(sk(x2),n2,fixedR).+R4->X8.-l7(✓)->nonceErr],{X8≠sk(x2),X2≠sk(x1)},⊤,[])}
+Checked = {(l7,nonceErr)}
+SatResult: Satisfiable. Model:
+  t1 = -1 :: Integer
+  t2 =  0 :: Integer
+  x2 = -1 :: Integer
+  x1 =  0 :: Integer

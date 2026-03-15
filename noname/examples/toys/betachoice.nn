@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2023 Technical University of Denmark
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+#######################################################################
+# BetaChoice: toy protocol to test variables in beta but not in alpha #
+#######################################################################
+
+Sigma0:
+public a/0 b/0 c/0
+
+Transaction BetaChoice:
+* x in {a,b,c}.
+<> y in {a,b}.
+if x in {a,b} then
+  send x.
+  * x = gamma(x). nil
+else send y. nil
+
+Bound: 1
+# EXPECTED RESULT: violated

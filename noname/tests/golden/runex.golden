@@ -1,0 +1,20 @@
+Privacy violation found after 2 transactions.
+alpha = x2∈{yes,no}∧x1∈{a,b,i}
+beta_0 = (x1=i)∧(x2≠yes)
+(alpha, beta_0)-privacy does not hold.
+Model found: x1=i∧x2=yes
+State: Executed = ReceivePrivateKey.Server
+Recipe choice = [R1->l1,R2->crypt(pk(s),R4,R5),R3->pk(s),R6->s,R7->l3,R8->l1]
+alpha_0 = x2∈{yes,no}∧x1∈{a,b,i}
+beta_0 = (x1=i)∧(x2≠yes)
+gamma_0 = ⊤
+Possibilities = {(nil,(x1=i)∧(x2≠yes),[-l1(✓(✓(✓)))->inv(pk(i)).-l2(✓(✓))->pk(i).+R4->X11.+R5->X13.-l3(✓(✓(✓),✓,✓))->crypt(pk(x1),no,n2).-l4(✓)->no.-l5(✓(✓(✓)))->inv(pk(i))],{},⊤,[])}
+Checked = {(l4,no),(l1,l5),(l2,pk(i))}
+SatResult: Satisfiable. Model:
+  yes = -1 :: Integer
+  no  =  0 :: Integer
+  a   =  1 :: Integer
+  b   =  2 :: Integer
+  i   =  3 :: Integer
+  x2  = -1 :: Integer
+  x1  =  3 :: Integer

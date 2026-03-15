@@ -1,0 +1,18 @@
+Privacy violation found after 3 transactions.
+alpha = x2∈{t1,t2,t3}∧x1∈{t1,t2,t3}
+beta_0 = (x1≠x2)∧(x2≠x1)
+(alpha, beta_0)-privacy does not hold.
+Model found: x1=t3∧x2=t3
+State: Executed = Tag.Tag.Reader
+Recipe choice = [R1->l2]
+alpha_0 = x2∈{t1,t2,t3}∧x1∈{t1,t2,t3}
+beta_0 = (x1≠x2)∧(x2≠x1)
+gamma_0 = ⊤
+Possibilities = {(nil,(x1≠x2)∧(x2≠x1),[-l1(✓(✓,✓(✓)))->g(x1,initr(x1)).-l2(✓(✓,✓(✓)))->g(x2,initr(x2)).-l3(✓)->ok],{},⊤,[r[x2]:=h(initr(x2)).t[x2]:=h(initr(x2)).t[x1]:=h(initr(x1))])}
+Checked = {(l3,ok),(l1,l2)}
+SatResult: Satisfiable. Model:
+  t1 = -1 :: Integer
+  t2 =  0 :: Integer
+  t3 =  1 :: Integer
+  x2 =  1 :: Integer
+  x1 =  1 :: Integer

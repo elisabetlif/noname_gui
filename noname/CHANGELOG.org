@@ -1,0 +1,21 @@
+* Revision history for noname
+
+** 0.3 -- 2024-11-21
+
+- Support for choosing between cvc5 and z3.
+- Fix redundant analysis of key terms.
+
+** 0.2 -- 2024-02-05
+
+- Addition of Haddock comments for most of the code.
+- Support for multiple cores.
+- Rewriting of the parser (with megaparsec instead of the previously
+  used alex+happy).
+
+** 0.1.0.0 -- 2023-05-15
+
+- Release of the first version of the tool, submitted to CSF 2024 as
+  additional material for the paper
+  [[https://doi.ieeecomputersociety.org/10.1109/CSF61375.2024.00011][/A
+  Decision Procedure for Alpha-Beta Privacy for a Bounded Number of
+  Transitions/]] by Fernet L., Mödersheim S. and Viganò L.
