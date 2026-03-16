@@ -11,7 +11,9 @@ Maintainer  : lpkf@dtu.dk
 Stability   : experimental
 -}
 module Main (main) where
-
+import Control.Monad (when)
+import System.IO (hFlush, stdout)
+import System.Process (spawnProcess)
 -- optparse-applicative
 import Options.Applicative
 
