@@ -41,6 +41,7 @@ data ExplorationMode
     Automatic
   | -- | Interactive exploration of one particular trace, with user input.
     Interactive
+  deriving (Eq)
 
 -- | The options for the protocol verifier.
 data Options = Options

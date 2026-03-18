@@ -61,6 +61,14 @@ optionsParser =
 main :: IO ()
 main = do
   opts <- execParser parser
+  -- Ask about GUI if interactive mode is selected
+  when (optMode opts == Interactive) $ do
+    putStr "Would you like to open the GUI? (y/n): "
+    hFlush stdout
+    answer <- getLine
+    case answer of
+      "y" -> spawnProcess "python3" ["wrapper_test.py"] >> return ()
+      _   -> return ()
   output <- noname opts
   case optOutput opts of
     Nothing -> Text.IO.putStrLn output
