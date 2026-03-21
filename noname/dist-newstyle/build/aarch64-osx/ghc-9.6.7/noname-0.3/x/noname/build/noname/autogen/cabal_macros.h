@@ -40,16 +40,6 @@
   (major1) == 0 && (major2) <  19 || \
   (major1) == 0 && (major2) == 19 && (minor) <= 0)
 #endif /* MIN_VERSION_optparse_applicative */
-/* package process-1.6.19.0 */
-#ifndef VERSION_process
-#define VERSION_process "1.6.19.0"
-#endif /* VERSION_process */
-#ifndef MIN_VERSION_process
-#define MIN_VERSION_process(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  6 || \
-  (major1) == 1 && (major2) == 6 && (minor) <= 19)
-#endif /* MIN_VERSION_process */
 /* package text-2.1.3 */
 #ifndef VERSION_text
 #define VERSION_text "2.1.3"

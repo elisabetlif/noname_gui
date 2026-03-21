@@ -70,7 +70,6 @@ executable noname
     , noname
     , optparse-applicative
     , text
-    , process
 
 test-suite golden-tests
   import:         settings
