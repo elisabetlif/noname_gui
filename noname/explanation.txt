@@ -1,0 +1,24 @@
+gui.py
+  → imports Session from session.py
+  → calls session.start(), session.choose(), session.revisit()
+  → receives TreeNode objects back
+  → reads node.state, node.options, node.raw for display
+  → calls node.active_path(), node.depth() for drawing
+
+session.py
+  → imports Wrapper from wrapper.py
+  → imports TreeNode from tree.py
+  → calls wrapper.start(), wrapper.send_choice()
+  → receives dicts back from wrapper
+  → creates TreeNodes from those dicts
+  → calls node.make_child(), node.path_from_root()
+
+wrapper.py
+  → spawns ./noname via pexpect
+  → reads/writes through PTY
+  → returns dicts to session
+
+tree.py
+  → no imports from other project files
+  → just nodes pointing to each other
+
