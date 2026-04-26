@@ -1,5 +1,5 @@
 
-#indepandant of noname and DearPyGui. just data structure 
+#independant of noname and DearPyGui. just data structure 
 
 class TreeNode:
     #stores state, options, raw, which choice led here, parent node.

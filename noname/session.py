@@ -1,6 +1,7 @@
 from wrapper import Wrapper
 from tree import TreeNode
 
+
 #The coordinator -> owns both Wrapper and the tree root 
 #the bridge between the Wrapper and GUI
 
@@ -35,6 +36,23 @@ class Session:
         )
         self.current = new_node
         return new_node
+    
+
+    def rewind(self, node: TreeNode) -> TreeNode:
+        # restart noname and replay up to this node
+        self.wrapper.terminate()
+        self.wrapper = Wrapper(self.binary_path, self.input_file)
+        self.wrapper.start()
+
+        # replay all choices up to this node
+        for past_choice in node.path_from_root():
+            self.wrapper.send_choice(past_choice)
+
+        # discard everything after this node
+        node.child = None
+        self.current = node
+
+        return node
 
     #terminates the wrapper, creates a fresh one, replays all choices up to the given node using path_from_root(), then makes the new choice
     #Discards everything after the revisited node by setting its child to None

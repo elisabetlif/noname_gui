@@ -140,7 +140,7 @@ prettyCenterProcess (Try x d ts pc (New [] Nil)) =
     , x
     , ":="
     , prettyMessage $ Comp d ts
-    , " in "
+    , " in. "
     , prettyCenterProcess pc
     ]
 prettyCenterProcess (Try x d ts pc1 pc2) =
@@ -149,20 +149,20 @@ prettyCenterProcess (Try x d ts pc1 pc2) =
     , x
     , ":="
     , prettyMessage $ Comp d ts
-    , " in "
+    , " in. "
     , prettyCenterProcess pc1
     , " catch "
     , prettyCenterProcess pc2
     ]
 prettyCenterProcess (If phi pc (New [] Nil)) =
-  mconcat ["if ", prettyFormula phi, " then ", prettyCenterProcess pc]
+  mconcat ["if ", prettyFormula phi, " then. ", prettyCenterProcess pc]
 prettyCenterProcess (If phi pc1 pc2) =
   mconcat
     [ "if "
     , prettyFormula phi
-    , " then "
+    , " then. "
     , prettyCenterProcess pc1
-    , " else "
+    , ". else. "
     , prettyCenterProcess pc2
     ]
 prettyCenterProcess (LetCenter x t pc) =
@@ -225,7 +225,7 @@ prettyPossibility p =
   mconcat
     [ "("
     , prettyProcess $ process p
-    , ","
+    , "|"
     , prettyFormula $ condition p
     , ","
     , prettyFlic $ flic p
