@@ -2,7 +2,13 @@
 import sys
 import re
 from typing import Optional
-import pexpect
+import platform
+import sys
+
+try: 
+    import pexpect
+except ImportError:
+    pexpect = None
 
 #lowest layer
 #every method here returns or produces a dict with state, options, raw and terminal
@@ -17,6 +23,14 @@ class Wrapper:
 
     #spawns noname using pexpect with the -i flag hardcoded, then immediately reads until noname is waiting for input
     def start(self) -> dict:
+        if pexpect is None:
+            raise RuntimeError("pexpect not installed. Run pip install pexpect")
+        if platform.system() == "Windows":
+            try:
+                import wexpect
+                self.process = wexpect.spawn(f"{self.binary_path} -i {self.input_file} --solver {self.solver}",encoding="utf-8")
+            except ImportError:
+                raise RuntimeError("wexpect not installed on Windows. Run: pip install wexpect")
         self.process = pexpect.spawn(
             f"{self.binary_path} -i {self.input_file} --solver {self.solver}",
             encoding="utf-8"

@@ -1,5 +1,6 @@
 from wrapper import Wrapper
 from tree import TreeNode
+import platform
 
 
 #The coordinator -> owns both Wrapper and the tree root 

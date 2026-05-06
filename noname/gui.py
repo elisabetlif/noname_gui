@@ -4,8 +4,8 @@ import math
 import os
 import dearpygui.dearpygui as dpg
 from session import Session
-from processor import split_up, process_possibilities, possibilities_with_checks, extract_flic
-
+from processor import split_up, extract_flic, extract_all_possibilities
+import re
 # top layer -> talks only to session, never to the wrapper or tree directly
 
 # globals
@@ -46,7 +46,45 @@ def get_system_font() -> str | None:
 
 
 # extracts the human readable name from the full option string
-def calculate_label(option: str) -> str:
+def calculate_label(option: str, flic: list = None, all_options: list = None) -> str:
+    if "The choice of" in option:
+        match = re.search(r'\[(.*?)\]', option)
+        if match:
+            full = match.group(1)
+            if "->" in full:
+                arrow_pos = full.index("->")
+                r_var = full[:arrow_pos]
+                raw_value = full[arrow_pos + 2:]
+                # extract value up to first comma at depth 0
+                # to avoid including subsequent recipe assignments
+                depth = 0
+                end = len(raw_value)
+                for i, c in enumerate(raw_value):
+                    if c == "(":
+                        depth += 1
+                    elif c == ")":
+                        depth -= 1
+                    elif c == "," and depth == 0:
+                        end = i
+                        break
+                value = raw_value[:end]
+                # get X var from sibling catch option
+                x_var = None
+                if all_options:
+                    for other in all_options:
+                        if "The disequalities" in other:
+                            x_match = re.search(r'(X\d+)≠', other)
+                            if x_match:
+                                x_var = x_match.group(1)
+                                break
+                var = x_var if x_var else r_var
+                return f"Try\n{var}={value}"
+        return "Try"
+    if "The disequalities" in option:
+        match = re.search(r'(X\d+≠\S+)', option)
+        if match:
+            return f"Catch\n{match.group(1)}"
+        return "Catch"
     parts = option.split("Execute the transaction ")
     if len(parts) > 1:
         return parts[1].rstrip(".")
@@ -56,12 +94,11 @@ def calculate_label(option: str) -> str:
     return option
 
 
+
 # checks if a mouse click falls within a circle using the distance formula
 def is_inside_circle(mouse_x, mouse_y, cx, cy, radius):
     return (mouse_x - cx) ** 2 + (mouse_y - cy) ** 2 <= radius ** 2
 
-
-#step display shows what step from the noname output the user is on
 def refresh_step_display():
     global current_steps, current_step_index, current_node
 
@@ -76,14 +113,28 @@ def refresh_step_display():
             dpg.set_value("detail_beta", f"beta_0: {state.get('beta_0', '')}")
             dpg.set_value("detail_recipe", f"Recipe choice: {state.get('Recipe choice', '')}")
             dpg.set_value("detail_gamma", f"gamma_0: {state.get('gamma_0', '')}")
-            dpg.set_value("detail_possibilities", f"Possibilities: {state.get('Possibilities', '')}")
-            dpg.set_value("detail_checked", f"Checked: {state.get('Checked', '')}")
+            #dpg.set_value("detail_possibilities", f"Possibilities: {state.get('Possibilities', '')}")
+            #dpg.set_value("detail_checked", f"Checked: {state.get('Checked', '')}")
             dpg.set_value("detail_raw", current_node.raw)
-            # no steps to compare so just show processed possibilities without checkmarks
-            dpg.set_value("detail_initial_possibilities", process_possibilities(state.get('Possibilities', '')))
-            # extract and display flic from current possibilities
-            flic_items = extract_flic(state.get("Possibilities", ""))
-            dpg.set_value("detail_flic", "\n".join(flic_items) if flic_items else "")
+            # rebuild table with flic and analysis
+            dpg.delete_item("intruder_table", children_only=True)
+            all_pos = extract_all_possibilities(state.get("Possibilities", ""))
+            if not all_pos:
+                all_pos = [{"condition": "⊤", "flic": [], "process": ""}]
+            dpg.add_table_column(label="", width_fixed=True,
+                                 init_width_or_weight=60, parent="intruder_table")
+            for p in all_pos:
+                label = p["condition"] if p["condition"] and p["condition"] != "⊤" else ""
+                dpg.add_table_column(label=label, parent="intruder_table")
+            with dpg.table_row(parent="intruder_table"):
+                dpg.add_text("FLIC")
+                for p in all_pos:
+                    dpg.add_text("\n".join(p["flic"]) if p["flic"] else "", wrap=120)
+            with dpg.table_row(parent="intruder_table"):
+                dpg.add_text("Analysis")
+                for p in all_pos:
+                    process = p["process"] if p["process"] != "nil" else "-"
+                    dpg.add_text(process, wrap=150)
         dpg.disable_item("btn_prev")
         dpg.disable_item("btn_next")
         return
@@ -91,39 +142,59 @@ def refresh_step_display():
     total = len(current_steps)
     step = current_steps[current_step_index]
     fields = step["fields"]
+    phase = step["phase"]
 
     dpg.set_value("detail_step_counter", f"Step {current_step_index + 1} of {total}")
-    dpg.set_value("detail_transition", f"{step['transition']}")
     dpg.set_value("detail_executed", f"Executed: {fields.get('Executed', '')}")
     dpg.set_value("detail_alpha", f"alpha_0: {fields.get('alpha_0', '')}")
     dpg.set_value("detail_beta", f"beta_0: {fields.get('beta_0', '')}")
     dpg.set_value("detail_recipe", f"Recipe choice: {fields.get('Recipe choice', '')}")
     dpg.set_value("detail_gamma", f"gamma_0: {fields.get('gamma_0', '')}")
-    dpg.set_value("detail_possibilities", f"Possibilities: {fields.get('Possibilities', '')}")
-    dpg.set_value("detail_checked", f"Checked: {fields.get('Checked', '')}")
-    dpg.set_value("detail_raw", current_node.raw)
+    #dpg.set_value("detail_possibilities", f"Possibilities: {fields.get('Possibilities', '')}")
+    #dpg.set_value("detail_checked", f"Checked: {fields.get('Checked', '')}")
 
-    # extract and display flic from current step's possibilities
-    # updates dynamically as user steps through with Next/Previous
-    flic_items = extract_flic(fields.get("Possibilities", ""))
-    dpg.set_value("detail_flic", "\n".join(flic_items) if flic_items else "")
+    if phase == "protocol":
+        dpg.set_value("detail_transition", step["transition"])
+    else:
+        # phase_label = "Recipe Analysis" if phase == "compose_check" else "Intruder Analysis"
+        dpg.set_value("detail_transition", f"{step['transition']}")
 
-    # update checkmarks based on current step
-    # collects all possibilities seen so far up to current step
-    # a step only gets a checkmark if it was seen at position [0] AND has since disappeared
-    all_possibilities = [
-        current_steps[i]["fields"].get("Possibilities", "")
-        for i in range(current_step_index + 1)
-    ]
-    steps = possibilities_with_checks(
-        current_steps[0]["fields"].get("Possibilities", ""),
-        all_possibilities
-    )
-    text = "\n".join(
-        f"✓ {s['step']}" if s['done'] else s['step']
-        for s in steps
-    )
-    dpg.set_value("detail_initial_possibilities", text)
+    # always rebuild the table using all possibilities from noname output
+    dpg.delete_item("intruder_table", children_only=True)
+
+    all_pos = extract_all_possibilities(fields.get("Possibilities", ""))
+
+    # fall back to empty single possibility if nothing returned
+    if not all_pos:
+        all_pos = [{"condition": "⊤", "flic": [], "process": ""}]
+
+    # row label column — fixed width
+    dpg.add_table_column(label="", width_fixed=True,
+                         init_width_or_weight=60, parent="intruder_table")
+    # one column per possibility with condition as header
+    for p in all_pos:
+        label = p["condition"] if p["condition"] and p["condition"] != "⊤" else ""
+        dpg.add_table_column(label=label, parent="intruder_table")
+
+    # flic row — always shown for all steps
+    with dpg.table_row(parent="intruder_table"):
+        dpg.add_text("FLIC")
+        for p in all_pos:
+            dpg.add_text("\n".join(p["flic"]) if p["flic"] else "", wrap=140)
+
+    # analysis row — always shown, updates with each step
+    # shows protocol process during protocol steps
+    # turns red and shows intruder process during intruder analysis
+    with dpg.table_row(parent="intruder_table"):
+        row_label = "Process" if phase == "protocol" else "Analysis"
+        dpg.add_text(row_label)
+        for p in all_pos:
+            process = p["process"] if p["process"] != "nil" else "-"
+            dpg.add_text(process, wrap=150)
+
+    # highlight analysis row red during intruder analysis
+    if phase != "protocol":
+        dpg.highlight_table_row("intruder_table", 1, (200, 30, 30, 180))
 
     # update button states
     if current_step_index <= 0:
@@ -138,6 +209,7 @@ def refresh_step_display():
 
 
 # takes a TreeNode and populates the right side panel with its state fields
+# all steps (protocol and intruder) are kept in one unified list for navigation
 def update_detail_panel(node):
     global current_node, current_step_index, current_steps
     current_node = node
@@ -146,7 +218,6 @@ def update_detail_panel(node):
     refresh_step_display()
 
 
-#next button in step display
 def on_next(sender, app_data):
     global current_step_index
     if current_step_index < len(current_steps) - 1:
@@ -154,7 +225,6 @@ def on_next(sender, app_data):
         refresh_step_display()
 
 
-#prev button in step display
 def on_prev(sender, app_data):
     global current_step_index
     if current_step_index > 0:
@@ -173,6 +243,8 @@ def on_resize(sender, app_data):
 
     dpg.configure_item("tree_window", width=tree_width, height=viewport_height - 50)
     dpg.configure_item("detail_window", width=detail_width, height=viewport_height - 50)
+    # resize table container proportionally
+    dpg.configure_item("table_window", height=int(viewport_height * 0.3))
 
     redraw_tree()
 
@@ -201,7 +273,6 @@ def get_drawlist_width() -> int:
     return max(min_width, calculated)
 
 
-#line that connects circles in the tree part of the gui
 def draw_line_between_circles(x1, y1, x2, y2, radius1, radius2,
                                color=(0, 0, 0, 255), thickness=2):
     dx = x2 - x1
@@ -224,7 +295,6 @@ def draw_line_between_circles(x1, y1, x2, y2, radius1, radius2,
     )
 
 
-#so the labels underneath the circles don't intersect (that is, not too long)
 def wrap_text(text: str, max_chars: int = 12) -> list[str]:
     words = text.split(" ")
     lines = []
@@ -240,9 +310,9 @@ def wrap_text(text: str, max_chars: int = 12) -> list[str]:
         lines.append(current_line)
     return lines
 
-#Calculate the x position of a node based on its path from root
+#Calculate the x position of a node based on its path from root.
 #Each choice shifts the position left or right, with spread halving at each depth.
-#Uses fixed CENTER_X so the tree never shifts unexpectedly
+#Uses fixed CENTER_X so the tree never shifts unexpectedly.
 def calculate_node_x(node, base_spread: int = 200) -> float:
     x = float(CENTER_X)
     path_node = node
@@ -263,8 +333,8 @@ def calculate_node_x(node, base_spread: int = 200) -> float:
 
     return x
 
-#Calculates the x position of a grey circle representing an unchosen option
-# Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made
+#Calculate the x position of a grey circle representing an unchosen option.
+#Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made.
 def calculate_grey_x(parent_node, choice_num: int) -> float:
     parent_x = calculate_node_x(parent_node)
     total = len(parent_node.options)
@@ -278,6 +348,7 @@ def calculate_grey_x(parent_node, choice_num: int) -> float:
 # walks active_path() to draw green circles and connecting lines,
 # then draws grey circles for unchosen options at every level.
 # also rebuilds clickable_nodes so click detection works on the new layout.
+
 def redraw_tree():
     global clickable_nodes
     clickable_nodes = []
@@ -367,7 +438,8 @@ def redraw_tree():
                 grey_x = calculate_grey_x(node, choice_num)
                 grey_y = gy + level_height
                 tag = f"grey_past_{id(node)}_{j}"
-                label = calculate_label(option)
+                # pass node.options so Try label can find X var from sibling Catch
+                label = calculate_label(option, None, node.options)
                 lines = wrap_text(label)
 
                 # small grey circle for unchosen past option
@@ -391,7 +463,7 @@ def redraw_tree():
                              text_y + (k * 14)),
                             line,
                             color=(180, 180, 180, 255),
-                            size=13,
+                            size=16,
                             parent="tree_drawlist"
                         )
                 elif grey_x > gx:
@@ -429,12 +501,22 @@ def redraw_tree():
     if not current.terminal:
         cx, cy = green_positions[id(current)]
 
+        # get flic from current node's last step for Try label enrichment
+        current_flic = []
+        if session.current.raw:
+            current_steps_raw = split_up(session.current.raw)
+            if current_steps_raw:
+                current_flic = extract_flic(
+                    current_steps_raw[-1]["fields"].get("Possibilities", "")
+                )
+
         for j, option in enumerate(current.options):
             choice_num = j + 1
             grey_x = calculate_grey_x(current, choice_num)
             grey_y = cy + level_height
             tag = f"grey_current_{j}"
-            label = calculate_label(option)
+            # pass current_flic and current.options so Try label can be enriched
+            label = calculate_label(option, current_flic, current.options)
             lines = wrap_text(label)
 
             # full size grey circle for current options
@@ -509,7 +591,8 @@ def redraw_tree():
             label = "Start"
         else:
             parent = active_path[i - 1]
-            label = calculate_label(parent.options[node.choice_made - 1])
+            # pass parent.options so Try/Catch green circle labels are enriched
+            label = calculate_label(parent.options[node.choice_made - 1], None, parent.options)
 
         lines = wrap_text(label)
 
@@ -574,6 +657,7 @@ def redraw_tree():
                     )
 
 
+
 # called whenever the user clicks on the drawlist
 # checks grey circles first — if so calls session.choose() or session.revisit() and redraws
 # then checks green circles:
@@ -621,57 +705,48 @@ def setup_tree_panel():
     with dpg.drawlist(width=900, height=650, tag="tree_drawlist"):
         pass
 
-
-# creates the right side detail panel with all the state fields
 def setup_detail_panel():
     with dpg.group(tag="detail_panel"):
         dpg.add_text("Select a node to view details", tag="detail_text")
         dpg.add_separator()
 
-        # step navigation
+        # step navigation — covers both protocol and intruder analysis steps
         dpg.add_text("Step 0 of 0", tag="detail_step_counter")
         with dpg.group(horizontal=True):
             dpg.add_button(label="Previous", tag="btn_prev", callback=on_prev)
             dpg.add_button(label="Next", tag="btn_next", callback=on_next)
         dpg.disable_item("btn_prev")
         dpg.disable_item("btn_next")
-        dpg.add_separator()
 
-         # state fields
+        # state fields
         dpg.add_separator()
         dpg.add_text("Executed: ", tag="detail_executed", wrap=370)
         dpg.add_text("alpha_0: ", tag="detail_alpha", wrap=370)
         dpg.add_text("beta_0: ", tag="detail_beta", wrap=370)
         dpg.add_text("gamma_0: ", tag="detail_gamma", wrap=370)
         dpg.add_text("Recipe choice: ", tag="detail_recipe", wrap=370)
-        dpg.add_text("Possibilities: ", tag="detail_possibilities", wrap=370)
-        dpg.add_text("Checked: ", tag="detail_checked", wrap=370)
-
-
-        # messages and recipes observed by the intruder so far
-        dpg.add_separator()
-        dpg.add_text("FLIC:", wrap=370)
-        dpg.add_text("", tag="detail_flic", wrap=370)
-        dpg.add_separator()
-
-        # show all initial possibilities in the first step of the protocol
-        # checkmarks appear as noname examines each step
-        dpg.add_text("", tag="detail_initial_possibilities", wrap=370)
-
-        #Analysis (what the intruder is up to)
-        dpg.add_separator()
-        dpg.add_text("Analysis", wrap=370)
+        #dpg.add_text("Possibilities: ", tag="detail_possibilities", wrap=370)
+        #dpg.add_text("Checked: ", tag="detail_checked", wrap=370)
 
         # transition description
         dpg.add_separator()
         dpg.add_text("Transition:", wrap=370)
         dpg.add_text("", tag="detail_transition", wrap=370)
 
-        # raw output
+        # flic and intruder analysis table
+        # flic shown for all steps, analysis row shows current possibilities
+        # multiple columns when branches exist, single column otherwise
         dpg.add_separator()
-        dpg.add_text("Raw output:", wrap=370)
-        dpg.add_text("", tag="detail_raw", wrap=370)
-
+        with dpg.child_window(height=300, border=False):
+            with dpg.table(tag="intruder_table",
+                       header_row=True,
+                       borders_innerH=True,
+                       borders_innerV=True,
+                       borders_outerH=True,
+                       borders_outerV=True,
+                       scrollX=True,
+                       row_background=True):
+                dpg.add_table_column(label="", width_fixed=True, init_width_or_weight=60)
 
 # entry point
 def main():
@@ -697,6 +772,7 @@ def main():
                 dpg.add_font_range(0x0370, 0x03FF)
                 dpg.add_font_range(0x2700, 0x27BF)
                 dpg.add_font_range(0x2600, 0x26FF)
+                dpg.add_font_range(0x2000, 0x206F) 
         dpg.bind_font(default_font)
     else:
         print("Warning: no suitable system font found, some symbols may not display correctly")
@@ -704,7 +780,7 @@ def main():
     with dpg.item_handler_registry(tag="tree_handler"):
         dpg.add_item_clicked_handler(callback=on_tree_click)
 
-    dpg.create_viewport(title="noname GUI", width=1000, height=700)
+    dpg.create_viewport(title="noname GUI", width=1100, height=700)
     dpg.setup_dearpygui()
 
     # set viewport resize callback so all panels adjust when window is resized
@@ -717,7 +793,7 @@ def main():
             with dpg.child_window(width=600, height=650, tag="tree_window",
                                   horizontal_scrollbar=True):
                 setup_tree_panel()
-            with dpg.child_window(width=400, height=650, tag="detail_window",
+            with dpg.child_window(width=500, height=650, tag="detail_window",
                                   horizontal_scrollbar=True):
                 setup_detail_panel()
 

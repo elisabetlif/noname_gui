@@ -240,7 +240,7 @@ prettyPossibility p =
 
 prettyPossibilities :: [Possibility] -> Text
 prettyPossibilities ps =
-  mconcat ["{", Text.intercalate "," $ map prettyPossibility ps, "}"]
+  mconcat ["{", Text.intercalate "§" $ map prettyPossibility ps, "}"]
 
 prettyAlpha0 :: State -> Text
 prettyAlpha0 state =

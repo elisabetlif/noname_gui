@@ -34,21 +34,27 @@ import Noname.NonDetState
 import Noname.Pretty
 import Noname.State
 
+
+
+
 -- | The class for abstracting the selection function.
 class Monad m => HasSelect m where
   select :: State -> [(Text, a)] -> m [a]
+  printPhase :: Text -> m ()
+
 
 {- | For Identity, select all the options in the list (used in
 @'Noname.Automatic'@ mode).
 -}
 instance HasSelect Identity where
   select _ = pure . map snd
-
+  printPhase _ = pure ()
 {- | For IO, ask the user to select one option among the list (used in
 @'Noname.Interactive'@ mode).
 -}
 instance HasSelect IO where
   select = userSelect
+  printPhase = Text.IO.putStrLn
 
 -- | Ask the user to select one option among the list.
 userSelect :: State -> [(Text, a)] -> IO [a]
@@ -135,6 +141,7 @@ setProcess pl = do
 -- | Execute the destructor oracle with the message produced by the label.
 executeWithLabel :: HasSelect m => State -> LeftProcess -> Label -> m [State]
 executeWithLabel state pl l = do
+  printPhase "[ANALYZE]"
   composeCheck =<< evaluate (execNonDetState instantiateOracle state)
  where
   instantiateOracle :: NonDetState ()
@@ -195,8 +202,12 @@ analyze states =
 executed transactions.
 -}
 executeTransaction :: HasSelect m => State -> (Text, LeftProcess) -> m [State]
-executeTransaction state (t, pl) =
-  analyze =<< composeCheck =<< evaluate (execNonDetState setTransaction state)
+executeTransaction state (t, pl) = do
+  evaluated <- evaluate (execNonDetState setTransaction state)
+  printPhase "[COMPOSE_CHECK]"
+  composed <- composeCheck evaluated
+  printPhase "[ANALYZE]"
+  analyze composed
  where
   setTransaction :: NonDetState ()
   setTransaction = do
