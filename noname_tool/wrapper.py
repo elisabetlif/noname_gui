@@ -4,6 +4,7 @@ import re
 from typing import Optional
 import platform
 import sys
+import subprocess
 
 try: 
     import pexpect
@@ -29,6 +30,7 @@ class Wrapper:
             try:
                 import wexpect
                 self.process = wexpect.spawn(f"{self.binary_path} -i {self.input_file} --solver {self.solver}",encoding="utf-8")
+                return self._read_until_waiting()
             except ImportError:
                 raise RuntimeError("wexpect not installed on Windows. Run: pip install wexpect")
         self.process = pexpect.spawn(
@@ -88,6 +90,9 @@ class Wrapper:
             if line.startswith("Current state:"):
                 in_state = True
                 continue
+            if line.startswith("State:"):
+                in_state = True
+                line = line[len("State:"):].strip()  
             if line.startswith("Select an option:"):
                 in_state = False
                 continue
@@ -117,3 +122,14 @@ class Wrapper:
         if self.process:
             self.process.terminate()
             self.process = None
+
+    #Run noname non-interactively and return full output.
+    def run_automatic(self) -> str:
+        result = subprocess.run(
+            [self.binary_path, self.input_file, "--solver", self.solver],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        # combine stdout and stderr since noname splits output between them
+        return result.stdout + result.stderr

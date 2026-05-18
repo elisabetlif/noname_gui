@@ -20,6 +20,7 @@ def split_up(raw: str) -> list[dict]:
         "Bound reached",
         "Privacy violation found",
         "There are no more reachable states",
+        "SatResult:",
     ]
 
     # split on "Current state:" keeping everything between chunks
@@ -27,7 +28,9 @@ def split_up(raw: str) -> list[dict]:
     current_phase = "protocol"
     steps = []
 
+    raw = raw.replace("State:", "Current state:")
     parts = raw.split("Current state:")
+
 
     for part in parts:
         if not part.strip():
@@ -128,117 +131,6 @@ def get_step(raw: str, index: int) -> dict | None:
         return None
     return steps[index]
 
-
-# takes the raw Possibilities string from the first step and transforms it
-# into a more readable format by extracting just the process part
-# uses | separator added in Pretty.hs to split process from metadata
-#def process_possibilities(possibilities: str) -> str:
- #   if not possibilities:
-  #      return ""
-    # strip outer { and first (
- #   inner = possibilities[2:-2]
-    # take only the first possibility's process (before |)
-    # split on § first in case there are multiple possibilities
-  #  first = inner.split("§")[0]
-  #  process = first.split("|")[0]
-    # split on dots outside parentheses
-  #  steps = []
-  #  current = ""
- #   depth = 0
- #   for char in process:
-  #      if char == "(":
-  #          depth += 1
- #           current += char
-  #      elif char == ")":
- #           depth -= 1
- #           current += char
- #       elif char == "." and depth == 0:
- #           if current.strip():
- #               steps.append(current.strip())
- #           current = ""
- #       else:
- #           current += char
- #   if current.strip():
- #       steps.append(current.strip())
-#    return "\n".join(steps)
-
-
-# compares initial and current possibilities to determine which steps
-# have been examined by noname
-# returns a list of dicts with "step" and "done" keys
-#def possibilities_with_checks(initial: str, all_steps: list[dict]) -> list[dict]:
-#    initial_steps = process_possibilities(initial).split("\n")
-    # collect all steps that have appeared at position [0] — the front of the process
-#    seen_at_front = set()
- #   for step in all_steps:
-#        pos = step["fields"].get("Possibilities", "")
-#        steps = process_possibilities(pos).split("\n")
- #       if steps:
-#            seen_at_front.add(steps[0].strip())
-
-    # current possibilities — last in the list
-  #  current_steps_stripped = [s.strip() for s in process_possibilities(
-  #      all_steps[-1]["fields"].get("Possibilities", "")).split("\n")]
-
-    # if current possibilities is nil everything is done — all steps executed
- #   if current_steps_stripped == ["nil"] or current_steps_stripped == []:
- #       return [{"step": step, "done": True} for step in initial_steps]
-
-
-    # check if any step caused a branch split — detected by beta_0 containing ∨
-    # in bac the if resolves deterministically so beta_0 stays ⊤ and no split occurs
-    # in runex the if x2=yes can't resolve so beta_0 becomes x2=yes ∨ x2≠yes
-#    branched = any("∨" in s["fields"].get("beta_0", "") for s in all_steps)
-
-#    result = []
-#    found_undone = False
-
-#    for step in initial_steps:
-#        step_stripped = step.strip()
-
-#        if found_undone:
-#            result.append({"step": step, "done": False})
-#            continue
-
-        # only stop checkmarks at if/else if branching actually occurred
-        # if beta_0 never contains ∨ the if resolved cleanly and we continue checking
-#        if step_stripped.startswith("if ") or step_stripped.startswith("else"):
-#            if branched:
-#                found_undone = True
- #               result.append({"step": step, "done": False})
-#                continue
-
-        # get prefix up to first ( to avoid variable substitution issues
-        # get prefix up to first ( or [ to avoid variable substitution issues
-#        if "(" in step_stripped:
-#            prefix = step_stripped.split("(")[0]
-#        elif "[" in step_stripped:
-#            prefix = step_stripped.split("[")[0]
-#        else:
-#            prefix = step_stripped
-
-        # ensure prefix is at least 10 chars to avoid false matches
-#        if len(prefix) < 10:
-#            prefix = step_stripped[:min(20, len(step_stripped))]
-
-        # step is done only if it was seen at position [0] AND is no longer in current
-        # special case for if statements — variable substitution means
-        # the condition changes, so just match on "if " prefix
-#        if step_stripped.startswith("if "):
-#            was_seen = any(s.startswith("if ") for s in seen_at_front)
-#        else:
-#            was_seen = any(s.startswith(prefix) for s in seen_at_front)
-
-#        still_present = any(cs.startswith(prefix) for cs in current_steps_stripped)
-
-#        done = was_seen and not still_present
-
-#        if not done:
-#            found_undone = True
-
-#        result.append({"step": step, "done": done})
-
-#    return result
 
 # extracts the flic (messages and recipes) from the possibilities string
 # returns a list of individual mappings like '-l1->session(x1,n1)'
@@ -414,3 +306,27 @@ def extract_branches(possibilities: str, beta: str) -> list[dict]:
             "flic": pos["flic"]
         })
     return result
+
+#Extracts the violation path from non-interactive noname output
+#Returns dict with Executed, Recipe choice, alpha_0, beta_0 or None.
+def parse_violation(output: str) -> dict | None:
+    if "Privacy violation found" not in output:
+        return None
+
+    violation_pos = output.find("Privacy violation found")
+    state_block = output[violation_pos:]
+
+    fields = {}
+
+    m = re.search(r'^State:\s*Executed = (.*)$', state_block, re.MULTILINE)
+    if m:
+        fields["Executed"] = m.group(1)
+
+    for field in ["Recipe choice", "alpha_0", "beta_0", "Checked"]:
+        m = re.search(rf"^{field} = (.*)$", state_block, re.MULTILINE)
+        if m:
+            fields[field] = m.group(1)
+
+    
+    return fields if fields else None
+    
