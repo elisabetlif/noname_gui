@@ -169,7 +169,6 @@ violation is found within the bound, a message is shown instead.
 4. Build noname and copy the binary:
   **cabal build** <br>
   **cp $(cabal list-bin noname) ../noname** <br>
-  **cd ..** <br>
 
 Note: <br>
 For Windows:  $(cabal list-bin noname) does not work in the command prompt; instead, run cabal list-bin noname to get the full path, then copy the binary manually to the repo root and name it noname.exe
