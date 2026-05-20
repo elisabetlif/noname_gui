@@ -197,7 +197,7 @@ Running:<br>
 Example: <br>
 **python gui.py** test.nn <br>
 
-
+If one wants to simply test the tool, it is good to go with the examples/ folder <br>
 ----------------------------------------------------------------------------------------------------------------------------
 ### The Interface: <br>
 
