@@ -164,7 +164,9 @@ violation is found within the bound, a message is shown instead.
 2. Clone the repository <br>
    **git clone...**
 
-3. Build noname and copy the binary:
+3. cd into **noname_tool** <br>
+
+4. Build noname and copy the binary:
   **cabal build** <br>
   **cp $(cabal list-bin noname) ../noname** <br>
   **cd ..** <br>
