@@ -2,6 +2,7 @@ import sys
 import platform
 import math
 import os
+import subprocess
 import dearpygui.dearpygui as dpg
 from session import Session
 from processor import split_up, extract_flic, extract_all_possibilities, parse_violation
@@ -23,6 +24,8 @@ CENTER_X = 450
 
 
 # so all symbols from noname show up in GUI
+# on Linux, uses fc-match to find a suitable font dynamically
+# falls back to hardcoded paths if fc-match is not available
 def get_system_font() -> str | None:
     system = platform.system()
     if system == "Darwin":
@@ -36,9 +39,34 @@ def get_system_font() -> str | None:
             "C:/Windows/Fonts/seguisym.ttf",
         ]
     elif system == "Linux":
+        # try fc-match first — works on any distro with fontconfig installed
+        # asks for a font that supports Greek characters (covers α, β, γ etc.)
+        try:
+            result = subprocess.run(
+                ["fc-match", "--format=%{file}", ":lang=el:spacing=proportional"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                path = result.stdout.strip()
+                if os.path.exists(path):
+                    return path
+        except FileNotFoundError:
+            pass
+
+        # fallback to hardcoded paths for common distros
         candidates = [
+            # Ubuntu/Debian
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            # Arch Linux (ttf-dejavu)
             "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+            # Arch Linux (ttf-dejavu alternative path)
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            # Arch Linux (noto-fonts)
+            "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+            # Arch Linux (ttf-liberation)
+            "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+            # Fedora/RHEL
+            "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
         ]
     else:
         return None
@@ -62,7 +90,7 @@ def calculate_label(option: str, flic: list = None, all_options: list = None) ->
         a = m.group(1).rstrip(".")
         b = m.group(2).rstrip(".")
         return f"{a}={b}"
-    
+
     if "The choice of" in option:
         match = re.search(r'\[(.*?)\]', option)
         if match:
@@ -110,10 +138,20 @@ def calculate_label(option: str, flic: list = None, all_options: list = None) ->
     return option
 
 
-
 # checks if a mouse click falls within a circle using the distance formula
 def is_inside_circle(mouse_x, mouse_y, cx, cy, radius):
     return (mouse_x - cx) ** 2 + (mouse_y - cy) ** 2 <= radius ** 2
+
+
+# returns the rendered pixel width of a string using the active Dear PyGui font.
+# falls back to a character-count estimate if get_text_size returns None,
+# which can happen on the first draw call before the font is fully active.
+def get_text_width(line: str) -> float:
+    size = dpg.get_text_size(line)
+    if size is None:
+        return len(line) * 9
+    return size[0]
+
 
 def refresh_step_display():
     global current_steps, current_step_index, current_node
@@ -242,6 +280,7 @@ def refresh_step_display():
     else:
         dpg.enable_item("btn_next")
 
+
 # takes a TreeNode and populates the right side panel with its state fields
 # all steps (protocol and intruder) are kept in one unified list for navigation
 def update_detail_panel(node):
@@ -367,9 +406,10 @@ def wrap_text(text: str, max_chars: int = 12) -> list[str]:
         lines.append(current_line)
     return lines
 
-#Calculate the x position of a node based on its path from root.
-#Each choice shifts the position left or right, with spread halving at each depth.
-#Uses fixed CENTER_X so the tree never shifts unexpectedly.
+
+# Calculate the x position of a node based on its path from root.
+# Each choice shifts the position left or right, with spread halving at each depth.
+# Uses fixed CENTER_X so the tree never shifts unexpectedly.
 def calculate_node_x(node, base_spread: int = 200) -> float:
     x = float(CENTER_X)
     path_node = node
@@ -390,8 +430,9 @@ def calculate_node_x(node, base_spread: int = 200) -> float:
 
     return x
 
-#Calculate the x position of a grey circle representing an unchosen option.
-#Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made.
+
+# Calculate the x position of a grey circle representing an unchosen option.
+# Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made.
 def calculate_grey_x(parent_node, choice_num: int) -> float:
     parent_x = calculate_node_x(parent_node)
     total = len(parent_node.options)
@@ -405,6 +446,7 @@ def calculate_grey_x(parent_node, choice_num: int) -> float:
 # walks active_path() to draw green circles and connecting lines,
 # then draws grey circles for unchosen options at every level.
 # also rebuilds clickable_nodes so click detection works on the new layout.
+# uses dpg.get_text_size() for accurate label positioning across platforms
 def redraw_tree():
     global clickable_nodes
     clickable_nodes = []
@@ -418,7 +460,6 @@ def redraw_tree():
     level_height = 200
     green_radius = 30
     grey_radius = 15
-    char_width = 9
 
     active_path = session.current.active_path()
 
@@ -510,10 +551,11 @@ def redraw_tree():
                 )
 
                 # place label on outer side, right-aligned for left circles
+                # use dpg.get_text_size for accurate width measurement across platforms
                 text_y = grey_y - (len(lines) * 20) / 2
                 if grey_x < gx:
                     for k, line in enumerate(lines):
-                        text_width = len(line) * char_width
+                        text_width = get_text_width(line)
                         dpg.draw_text(
                             (grey_x - grey_radius - text_width,
                              text_y + (k * 16)),
@@ -587,10 +629,11 @@ def redraw_tree():
             )
 
             # place label on outer side, right-aligned for left circles
+            # use dpg.get_text_size for accurate width measurement across platforms
             text_y = grey_y - (len(lines) * 20) / 2
             if grey_x < cx:
                 for k, line in enumerate(lines):
-                    text_width = len(line) * char_width
+                    text_width = get_text_width(line)
                     dpg.draw_text(
                         (grey_x - green_radius - text_width,
                          text_y + (k * 16)),
@@ -680,8 +723,9 @@ def redraw_tree():
 
             if gx < px:
                 # node is left of parent — label above, right-aligned
+                # use dpg.get_text_size for accurate width measurement across platforms
                 for k, line in enumerate(lines):
-                    text_width = len(line) * char_width
+                    text_width = get_text_width(line)
                     dpg.draw_text(
                         (gx - green_radius - text_width,
                          gy - green_radius - 18 - ((len(lines) - k - 1) * 20)),
@@ -711,7 +755,6 @@ def redraw_tree():
                         size=20,
                         parent="tree_drawlist"
                     )
-
 
 
 # called whenever the user clicks on the drawlist
@@ -767,13 +810,10 @@ def on_run_automatic(sender, app_data):
 
     # run noname non-interactively
     output = session.wrapper.run_automatic()
-   
-
 
     # parse violation
     violation = parse_violation(output)
 
-    
     if not violation:
         dpg.set_value("auto_result", "No privacy violation found.")
         return
@@ -794,13 +834,12 @@ def on_run_automatic(sender, app_data):
         checked
     )
 
-    
- 
     update_detail_panel(node)
     redraw_tree()
 
     dpg.set_value("auto_result",
         f"Violation: {beta}")
+
 
 def setup_detail_panel():
     with dpg.group(tag="detail_panel"):
@@ -815,7 +854,7 @@ def setup_detail_panel():
         dpg.disable_item("btn_prev")
         dpg.disable_item("btn_next")
 
-        #button for making noname run non-interactively
+        # button for making noname run non-interactively
         dpg.add_separator()
         dpg.add_button(
             label="Run noname (automatic mode)",
@@ -828,14 +867,11 @@ def setup_detail_panel():
         # state fields
         dpg.add_separator()
         dpg.add_text("Executed: ", tag="detail_executed", wrap=370)
-       # dpg.add_text("alpha_0: ", tag="detail_alpha", wrap=370)
         dpg.add_input_text(tag="detail_alpha", default_value="alpha_0: ", width=-1, readonly=True)
         dpg.add_input_text(tag="detail_beta", default_value="beta_0: ", width=-1, readonly=True)
-        #dpg.add_text("beta_0: ", tag="detail_beta", wrap=370)
         dpg.add_text("gamma_0: ", tag="detail_gamma", wrap=370)
         dpg.add_text("Recipe choice: ", tag="detail_recipe", wrap=370)
         dpg.add_text("Checked: ", tag="detail_checked", wrap=370)
-
 
         # transition description
         dpg.add_separator()
@@ -857,6 +893,7 @@ def setup_detail_panel():
                        row_background=True):
                 dpg.add_table_column(label="", width_fixed=True, init_width_or_weight=60)
 
+
 # entry point
 def main():
     global session, red_highlight_theme, default_input_theme
@@ -871,8 +908,6 @@ def main():
 
     dpg.create_context()
 
-
-    # in main(), after dpg.create_context()
     with dpg.theme() as red_highlight_theme:
         with dpg.theme_component(dpg.mvInputText):
             dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (180, 30, 30, 180))
@@ -893,7 +928,7 @@ def main():
                 dpg.add_font_range(0x0370, 0x03FF)
                 dpg.add_font_range(0x2700, 0x27BF)
                 dpg.add_font_range(0x2600, 0x26FF)
-                dpg.add_font_range(0x2000, 0x206F) 
+                dpg.add_font_range(0x2000, 0x206F)
         dpg.bind_font(default_font)
     else:
         print("Warning: no suitable system font found, some symbols may not display correctly")
