@@ -157,7 +157,36 @@ violation is found within the bound, a message is shown instead.
 -a .nn file <br>
 
 
-### Setup:
+### Setup: <br>
+
+
+### Installing cvc5 <br>
+
+**macOS:** <br>
+brew install cvc5 <br>
+
+
+**Ubuntu/Debian:** <br>
+apt install cvc5 <br>
+
+
+**Arch Linux:** <br>
+yay -S cvc5 <br>
+
+
+**All platforms:** Alternatively, download a binary directly from the 
+[cvc5 releases page](https://github.com/cvc5/cvc5/releases). <br>
+
+After installing, verify cvc5 is on your PATH: <br>
+cvc5 --version <br>
+ 
+
+noname calls cvc5 directly, so it must be findable on your system PATH. 
+If you see an error about cvc5 not being found, check that the above 
+command works before running the GUI.  <br>
+
+### Next steps:  <br>
+
 1. Install GHCup, the recommended way to install the Haskell toolchain: <br>
    **curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh**
 
@@ -171,11 +200,11 @@ violation is found within the bound, a message is shown instead.
   **cp $(cabal list-bin noname) ../noname** <br>
 
 Note: <br>
-For Windows:  $(cabal list-bin noname) does not work in the command prompt; instead, run cabal list-bin noname to get the full path, then copy the binary manually to the repo root and name it noname.exe
+For Windows:  $(cabal list-bin noname) does not work in the command prompt; instead, run cabal list-bin noname to get the full path, then copy the binary manually to the repo root and name it noname.exe <br>
 
 
 
-### Installation of dependencies:<br>
+### Python dependencies <br>
 
 macOS:<br>
 **pip install dearpygui pexpect**<br>
