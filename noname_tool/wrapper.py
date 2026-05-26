@@ -164,6 +164,7 @@ class Wrapper:
             [self.binary_path, self.input_file, "--solver", self.solver],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=60
         )
         return result.stdout + result.stderr
