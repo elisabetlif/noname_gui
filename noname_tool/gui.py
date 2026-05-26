@@ -8,6 +8,13 @@ from session import Session
 from processor import split_up, extract_flic, extract_all_possibilities, parse_violation
 import re
 
+
+#font issue
+if platform.system() == "Windows":
+    import ctypes
+    ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+
+
 # top layer -> talks only to session, never to the wrapper or tree directly
 
 # globals
@@ -21,6 +28,7 @@ default_input_theme = None
 
 # fixed center point — does not change regardless of tree width
 CENTER_X = 450
+
 
 
 # so all symbols from noname show up in GUI

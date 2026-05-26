@@ -3,6 +3,9 @@ import re
 from typing import Optional
 import platform
 import subprocess
+import os
+
+
 
 try:
     import pexpect
@@ -27,7 +30,8 @@ class Wrapper:
             if PtyProcess is None:
                 raise RuntimeError("pywinpty not installed. Run: pip install pywinpty")
             self.process = PtyProcess.spawn(
-                [self.binary_path, "-i", self.input_file, "--solver", self.solver]
+            [self.binary_path, "-i", self.input_file, "--solver", self.solver],
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
             )
             return self._read_until_waiting_winpty()
         
