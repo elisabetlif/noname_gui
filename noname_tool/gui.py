@@ -903,7 +903,10 @@ def main():
         sys.exit(1)
 
     input_file = sys.argv[1]
-    session = Session("./noname", input_file)
+    #session = Session("./noname", input_file)
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    binary_path = os.path.join(SCRIPT_DIR, "noname")
+    session = Session(binary_path, input_file)
     session.start()
 
     dpg.create_context()

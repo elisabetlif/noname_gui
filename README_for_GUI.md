@@ -210,7 +210,7 @@ macOS:<br>
 **pip install dearpygui pexpect**<br>
 
 Windows:<br>
-**pip install dearpygui wexpect**<br>
+**pip install dearpygui pywinpty**<br>
 
 Linux:<br>
 **pip install dearpygui pexpect**<br>
