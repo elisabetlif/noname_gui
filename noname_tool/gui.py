@@ -22,7 +22,7 @@ red_highlight_theme = None
 default_input_theme = None
 
 # fixed center point — does not change regardless of tree width
-CENTER_X = 450
+CENTER_X = 550
 
 
 
@@ -343,8 +343,14 @@ def on_resize(sender, app_data):
 # calculates how tall the drawlist needs to be so the tree doesn't get clipped
 def get_drawlist_height() -> int:
     depth = session.current.depth()
+    active_path = session.current.active_path()
+    max_options = max(
+        (len(node.options) for node in active_path if node.options),
+        default=1
+    )
+    level_height = max(200, max_options * 60)
     min_height = 650
-    calculated = (depth + 3) * 200 + 100
+    calculated = (depth + 3) * level_height + 100
     return max(min_height, calculated)
 
 
@@ -356,13 +362,13 @@ def get_drawlist_width() -> int:
     max_right = CENTER_X
     for node in active_path:
         d = node.depth()
-        spread = max(base_spread / (2 ** max(d - 1, 0)), 80) if d > 0 else 0
+        spread = max(base_spread / (2 ** max(d - 1, 0)), 100) if d > 0 else 0
         total = len(node.options) if node.options else 1
         x = calculate_node_x(node)
-        max_right = max(max_right, x + spread * total / 2)
-    calculated = int(max_right + 300)
+        # account for label width on rightmost nodes
+        max_right = max(max_right, x + spread * total / 2 + 200)
+    calculated = int(max_right + 500)
     return max(min_width, calculated)
-
 
 def draw_line_between_circles(x1, y1, x2, y2, radius1, radius2,
                                color=(0, 0, 0, 255), thickness=2):
@@ -386,7 +392,7 @@ def draw_line_between_circles(x1, y1, x2, y2, radius1, radius2,
     )
 
 
-def wrap_text(text: str, max_chars: int = 12) -> list[str]:
+def wrap_text(text: str, max_chars: int = 8) -> list[str]:
     words = text.split(" ")
     lines = []
     current_line = ""
@@ -418,7 +424,7 @@ def calculate_node_x(node, base_spread: int = 200) -> float:
     for ancestor in ancestors:
         total = len(current.options)
         depth = ancestor.depth()
-        spread = max(base_spread / (2 ** max(depth - 1, 0)), 80)
+        spread = max(base_spread / (2 ** max(depth - 1, 0)), 150)
         offset = (ancestor.choice_made - (total + 1) / 2) * spread
         x += offset
         current = ancestor
@@ -432,7 +438,9 @@ def calculate_grey_x(parent_node, choice_num: int) -> float:
     parent_x = calculate_node_x(parent_node)
     total = len(parent_node.options)
     depth = parent_node.depth()
-    spread = max(200 / (2 ** max(depth, 0)), 80)
+    # use smaller spread at shallow depths, larger at deeper depths
+    base = max(200, min(total * 100, 300 + depth * 50))
+    spread = max(base / (2 ** max(depth, 0)), 100)
     offset = (choice_num - (total + 1) / 2) * spread
     return parent_x + offset
 
@@ -452,12 +460,16 @@ def redraw_tree():
     dpg.delete_item("tree_drawlist", children_only=True)
 
     start_y = 60
-    level_height = 200
+    active_path = session.current.active_path()
+    #to calculate level height between nodes dynamically based on max options at any depth
+    max_options = max((len(node.options) for node in active_path if node.options),
+    default=1)
+    level_height = max(200, max_options * 55)
     green_radius = 30
     grey_radius = 15
+    center_threshold = 20  # px — nodes within this distance of parent x get label below
 
-    active_path = session.current.active_path()
-
+   
     # first pass — calculate positions for all green nodes
     green_positions = {}
     for node in active_path:
@@ -530,11 +542,9 @@ def redraw_tree():
                 grey_x = calculate_grey_x(node, choice_num)
                 grey_y = gy + level_height
                 tag = f"grey_past_{id(node)}_{j}"
-                # pass node.options so Try label can find X var from sibling Catch
                 label = calculate_label(option, None, node.options)
                 lines = wrap_text(label)
 
-                # small grey circle for unchosen past option
                 dpg.draw_circle(
                     (grey_x, grey_y),
                     grey_radius,
@@ -545,10 +555,11 @@ def redraw_tree():
                     tag=tag
                 )
 
-                # place label on outer side, right-aligned for left circles
-                # use dpg.get_text_size for accurate width measurement across platforms
+                # place label based on position relative to parent
+                # nodes close to center get label below to avoid overlap
                 text_y = grey_y - (len(lines) * 20) / 2
-                if grey_x < gx:
+                if grey_x < gx - center_threshold:
+                    # clearly left — label to the left
                     for k, line in enumerate(lines):
                         text_width = get_text_width(line)
                         dpg.draw_text(
@@ -559,7 +570,8 @@ def redraw_tree():
                             size=20,
                             parent="tree_drawlist"
                         )
-                elif grey_x > gx:
+                elif grey_x > gx + center_threshold:
+                    # clearly right — label to the right
                     for k, line in enumerate(lines):
                         dpg.draw_text(
                             (grey_x + grey_radius + 5,
@@ -570,9 +582,11 @@ def redraw_tree():
                             parent="tree_drawlist"
                         )
                 else:
+                    # close to center — label below to avoid overlap
                     for k, line in enumerate(lines):
+                        text_width = get_text_width(line)
                         dpg.draw_text(
-                            (grey_x - 25,
+                            (grey_x - text_width / 2,
                              grey_y + grey_radius + 3 + (k * 16)),
                             line,
                             color=(180, 180, 180, 255),
@@ -608,11 +622,9 @@ def redraw_tree():
             grey_x = calculate_grey_x(current, choice_num)
             grey_y = cy + level_height
             tag = f"grey_current_{j}"
-            # pass current_flic and current.options so Try label can be enriched
             label = calculate_label(option, current_flic, current.options)
             lines = wrap_text(label)
 
-            # full size grey circle for current options
             dpg.draw_circle(
                 (grey_x, grey_y),
                 green_radius,
@@ -623,10 +635,11 @@ def redraw_tree():
                 tag=tag
             )
 
-            # place label on outer side, right-aligned for left circles
-            # use dpg.get_text_size for accurate width measurement across platforms
+            # place label based on position relative to parent
+            # nodes close to center get label below to avoid overlap
             text_y = grey_y - (len(lines) * 20) / 2
-            if grey_x < cx:
+            if grey_x < cx - center_threshold:
+                # clearly left — label to the left
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
@@ -637,27 +650,29 @@ def redraw_tree():
                         size=20,
                         parent="tree_drawlist"
                     )
-            elif grey_x > cx:
+            elif grey_x > cx + center_threshold:
+                # clearly right — label to the right
                 for k, line in enumerate(lines):
                     dpg.draw_text(
-                        (grey_x + green_radius + 5,
-                         text_y + (k * 16)),
+                        (grey_x + green_radius + 15,
+                         grey_y + 15 + (k * 16)),
                         line,
                         color=(255, 255, 255, 255),
                         size=20,
                         parent="tree_drawlist"
                     )
             else:
+                # close to center — label below to avoid overlap
                 for k, line in enumerate(lines):
+                    text_width = get_text_width(line)
                     dpg.draw_text(
-                        (grey_x - 30,
-                         grey_y + green_radius + 5 + (k * 16)),
+                        (grey_x - text_width / 2,
+                        grey_y + green_radius + 8 + (k * 16)),
                         line,
                         color=(255, 255, 255, 255),
                         size=20,
                         parent="tree_drawlist"
                     )
-
             clickable_nodes.append({
                 "tag": tag,
                 "x": grey_x,
@@ -685,7 +700,6 @@ def redraw_tree():
             label = "Start"
         else:
             parent = active_path[i - 1]
-            # pass parent.options so Try/Catch green circle labels are enriched
             label = calculate_label(parent.options[node.choice_made - 1], None, parent.options)
 
         lines = wrap_text(label)
@@ -716,21 +730,20 @@ def redraw_tree():
             parent = active_path[i - 1]
             px, _ = green_positions[id(parent)]
 
-            if gx < px:
-                # node is left of parent — label above, right-aligned
-                # use dpg.get_text_size for accurate width measurement across platforms
+            if gx < px - center_threshold:
+                # clearly left of parent — label above, right-aligned
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
                         (gx - green_radius - text_width,
-                         gy - green_radius - 18 - ((len(lines) - k - 1) * 20)),
+                         gy - green_radius - 50 - ((len(lines) - k - 1) * 20)),
                         line,
                         color=(255, 255, 255, 255),
                         size=20,
                         parent="tree_drawlist"
                     )
-            elif gx > px:
-                # node is right of parent — label above, starts at right edge
+            elif gx > px + center_threshold:
+                # clearly right of parent — label above, starts at right edge
                 for k, line in enumerate(reversed(lines)):
                     dpg.draw_text(
                         (gx + green_radius + 5,
@@ -741,16 +754,17 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
             else:
-                # directly below parent — shift slightly right of vertical line
-                for k, line in enumerate(reversed(lines)):
+                #directly below parent — place label to the left of circle
+                for k, line in enumerate(lines):
+                    text_width = get_text_width(line)
                     dpg.draw_text(
-                        (gx + 5, gy - green_radius - 40 - (k * 16)),
+                        (gx - green_radius - text_width,
+                        gy - green_radius - 18 - ((len(lines) - k - 1) * 20)),
                         line,
                         color=(255, 255, 255, 255),
                         size=20,
                         parent="tree_drawlist"
                     )
-
 
 # called whenever the user clicks on the drawlist
 # checks grey circles first — if so calls session.choose() or session.revisit() and redraws
@@ -920,7 +934,6 @@ def main():
 
     session = Session(binary_path, input_file)
     session.start()
-    print("Options:", session.current.options)
 
     dpg.create_context()
 

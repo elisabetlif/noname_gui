@@ -109,24 +109,21 @@ class Session:
             recipes = [p.strip() for p in parts]
 
         # parse checked equivalences e.g. {(l7,nonceErr),(l2,pk(i))}
-        # handles values containing parentheses like pk(i)
         equiv_pairs = set()
         if checked and checked != "{}":
             inner = checked[1:-1]
-            # match outermost parens, then split on first comma
             depth = 0
             current_pair = ""
             for char in inner:
                 if char == "(" and not current_pair:
                     depth += 1
                     continue
-                elif char == "(" :
+                elif char == "(":
                     depth += 1
                     current_pair += char
                 elif char == ")":
                     depth -= 1
                     if depth == 0:
-                        # end of pair — split on first comma
                         comma_pos = current_pair.find(",")
                         if comma_pos != -1:
                             a = current_pair[:comma_pos].strip()
@@ -139,48 +136,62 @@ class Session:
                     continue
                 else:
                     current_pair += char
-    
 
-        # replay transactions
-        for transaction in transactions:
-            matched = False
-            for i, option in enumerate(self.current.options):
-                if f"Execute the transaction {transaction}." in option:
-                    self.choose(i + 1)
-                    matched = True
-                    break
-            if not matched:
-                print(f"  WARNING: could not find transaction {transaction}")
-                return self.current
-
-        # replay recipe and equivalence choices until no more options
-        # uses a safety limit to avoid infinite loops
-        max_iterations = 50
+        # single interleaved replay loop —
+        # at each step decide what kind of choice noname is presenting
+        # and handle it accordingly: transaction, recipe, equivalence, or send
+        max_iterations = 100
         iterations = 0
+        tx_index = 0  # tracks which transaction we are up to
+
         while self.current.options and iterations < max_iterations:
             iterations += 1
             options = self.current.options
-            first = options[0] if options else ""
 
-            # try recipe choices first
-            matched = False
-            for recipe in recipes:
+            # check what kind of options are being presented
+            has_transaction = any("Execute the transaction" in opt for opt in options)
+            has_recipe = any("The choice of" in opt for opt in options)
+            has_equivalence = any("are equivalent" in opt or "are NOT equivalent" in opt for opt in options)
+            has_send = any("A message is sent" in opt for opt in options)
+
+            # --- transaction choice ---
+            if has_transaction and tx_index < len(transactions):
+                transaction = transactions[tx_index]
+                matched = False
                 for i, option in enumerate(options):
-                    if recipe in option and "The choice of" in option:
+                    if f"Execute the transaction {transaction}." in option:
                         self.choose(i + 1)
+                        tx_index += 1
                         matched = True
                         break
-                if matched:
-                    break
-
-            if matched:
+                if not matched:
+                    print(f"WARNING: could not find transaction {transaction}")
+                    return self.current
                 continue
 
-            # try equivalence choices
-            if "are equivalent" in first or "are NOT equivalent" in first:
+            # --- recipe choice ---
+            if has_recipe:
+                matched = False
+                for recipe in recipes:
+                    for i, option in enumerate(options):
+                        if recipe in option and "The choice of" in option:
+                            self.choose(i + 1)
+                            matched = True
+                            break
+                    if matched:
+                        break
+                if not matched:
+                    # pick first recipe option as fallback
+                    for i, option in enumerate(options):
+                        if "The choice of" in option:
+                            self.choose(i + 1)
+                            break
+                continue
+
+            # --- equivalence choice ---
+            if has_equivalence:
                 chose = False
                 for i, option in enumerate(options):
-                    # extract labels from "The recipes l7 and nonceErr are equivalent."
                     m = re.search(r'recipes (\S+) and (\S+) are equivalent', option)
                     if m:
                         a = m.group(1).rstrip(".")
@@ -197,17 +208,16 @@ class Session:
                             self.choose(i + 1)
                             break
                 continue
-            send_matched = False
-            for i, option in enumerate(options):
-                if "A message is sent" in option:
-                    self.choose(i + 1)
-                    send_matched = True
-                    break
-            if send_matched:
+
+            # --- send step ---
+            if has_send:
+                for i, option in enumerate(options):
+                    if "A message is sent" in option:
+                        self.choose(i + 1)
+                        break
                 continue
 
             # no more choices we know how to handle
             break
 
-        
         return self.current
