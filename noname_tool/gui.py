@@ -176,7 +176,7 @@ def refresh_step_display():
             dpg.set_value("detail_recipe", f"Recipe choice: {state.get('Recipe choice', '')}")
             dpg.set_value("detail_gamma", f"gamma_0: {state.get('gamma_0', '')}")
             dpg.set_value("detail_checked", f"Checked: {state.get('Checked', '')}")
-            dpg.set_value("detail_raw", current_node.raw)
+            #dpg.set_value("detail_raw", current_node.raw)
 
             # apply theme based on terminal state
             if current_node.terminal and "Privacy violation found" in current_node.raw:
@@ -916,6 +916,7 @@ def main():
     binary_path = os.path.join(SCRIPT_DIR, "noname")
     session = Session(binary_path, input_file)
     session.start()
+    print("Options:", session.current.options)
 
     dpg.create_context()
 
@@ -933,13 +934,7 @@ def main():
     if font_path:
         with dpg.font_registry():
             with dpg.font(font_path, 20) as default_font:
-                dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
-                dpg.add_font_range(0x2200, 0x22FF)
-                dpg.add_font_range(0x2100, 0x214F)
-                dpg.add_font_range(0x0370, 0x03FF)
-                dpg.add_font_range(0x2700, 0x27BF)
-                dpg.add_font_range(0x2600, 0x26FF)
-                dpg.add_font_range(0x2000, 0x206F)
+                pass
         dpg.bind_font(default_font)
     else:
         print("Warning: no suitable system font found, some symbols may not display correctly")
