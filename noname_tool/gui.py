@@ -9,11 +9,6 @@ from processor import split_up, extract_flic, extract_all_possibilities, parse_v
 import re
 
 
-#font issue
-if platform.system() == "Windows":
-    import ctypes
-    ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-
 
 # top layer -> talks only to session, never to the wrapper or tree directly
 
@@ -40,11 +35,6 @@ def get_system_font() -> str | None:
         candidates = [
             "/Library/Fonts/Arial Unicode.ttf",
             "/System/Library/Fonts/Supplemental/Geneva.ttf",
-        ]
-    elif system == "Windows":
-        candidates = [
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/seguisym.ttf",
         ]
     elif system == "Linux":
         # try fc-match first — works on any distro with fontconfig installed
@@ -912,8 +902,25 @@ def main():
 
     input_file = sys.argv[1]
     #session = Session("./noname", input_file)
+
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    binary_path = os.path.join(SCRIPT_DIR, "noname")
+    system = platform.system()
+   
+
+    if system == "Darwin":
+        binary_path = os.path.join(SCRIPT_DIR, "noname-macos")
+    elif system == "Linux":
+        binary_path = os.path.join(SCRIPT_DIR, "noname-linux")
+    else:
+        binary_path = os.path.join(SCRIPT_DIR, "noname-linux")
+
+    if not os.path.exists(binary_path):
+        print(f"Error: noname binary not found at {binary_path}")
+        print("Make sure the correct noname binary is in the same directory as gui.py")
+        sys.exit(1)
+
+
+
     session = Session(binary_path, input_file)
     session.start()
     print("Options:", session.current.options)
