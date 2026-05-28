@@ -941,7 +941,10 @@ def main():
     if font_path:
         with dpg.font_registry():
             with dpg.font(font_path, 20) as default_font:
-                pass
+                dpg.add_font_range(0x2200, 0x22FF)  # mathematical operators
+                dpg.add_font_range(0x0370, 0x03FF)  # Greek letters (α, β, γ)
+                dpg.add_font_range(0x2700, 0x27BF)  # ✓ ★
+                dpg.add_font_range(0x2600, 0x26FF)  # miscellaneous symbols
         dpg.bind_font(default_font)
     else:
         print("Warning: no suitable system font found, some symbols may not display correctly")
