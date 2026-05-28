@@ -5,12 +5,16 @@ protocols developed at DTU.
 
 ## Platform support
 
-**macOS and Linux**: fully supported — follow the macOS/Linux instructions.
+**macOS (Apple Silicon)**: fully supported — uses `noname-macos`.
 
-**Windows**: the noname binary only runs on Linux. Windows users must use 
-**WSL2 (Windows Subsystem for Linux)** and follow the Linux instructions 
-from within the WSL terminal. See WSL2 setup below.
+**Linux (x86_64)**: fully supported — uses `noname-linux`.
 
+**Windows**: the noname binary only runs on Linux. Windows users must 
+use **WSL2** and follow the Linux instructions. The `noname-linux` 
+binary will be used automatically inside WSL.
+
+**Note**: Intel Mac (x86_64) is not currently supported as no binary is included. Users with an Intel Mac would need to compile noname from 
+source.
 ---
 
 ## Background
@@ -164,8 +168,8 @@ violation is found within the bound, a message is shown instead.
 
 - Python 3.10 or newer
 - A `.nn` protocol specification file
-- GHC 9.6.7 and Cabal (only needed if building noname from source)
-
+- GHC 9.6.7 and Cabal (only needed if building noname from source — 
+  pre-built binaries for macOS arm64 and Linux x86_64 are included)
 ---
 
 ## Installation
@@ -341,15 +345,20 @@ source ~/noname_venv/bin/activate
 pip install dearpygui pexpect
 ```
 
-**`Exec format error` when running noname** — the binary must be a Linux 
-x86_64 binary. Check with:
+**`Exec format error` when running noname** — make sure you are using 
+the correct binary for your platform. The repository includes:
+
+- `noname-macos` — macOS arm64 (Apple Silicon)
+- `noname-linux` — Linux x86_64
+
+The GUI selects the correct binary automatically based on your OS. 
+If you see this error, check that the correct binary is present and executable:
+
 ```bash
-file ./noname
-```
-It should say `ELF 64-bit LSB executable`. If it says `Mach-O` (macOS 
-binary), replace it with the Linux binary from: 
-```bash
-cp dist-newstyle/build/x86_64-linux/ghc-9.10.3/noname-0.3/x/noname/build/noname/noname ./noname
+file ./noname-macos   # should say: Mach-O 64-bit arm64 executable
+file ./noname-linux   # should say: ELF 64-bit LSB executable, x86-64
+chmod +x ./noname-macos
+chmod +x ./noname-linux
 ```
 
 **Symbols appear as blank squares** — install DejaVu fonts:
