@@ -340,9 +340,6 @@ def on_resize(sender, app_data):
     # resize table container proportionally
     dpg.configure_item("table_window", height=int(viewport_height * 0.3))
 
-    redraw_tree()
-
-
 # calculates how tall the drawlist needs to be so the tree doesn't get clipped
 def get_drawlist_height() -> int:
     depth = session.current.depth()
