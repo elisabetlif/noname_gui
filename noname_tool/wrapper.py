@@ -26,6 +26,8 @@ class Wrapper:
         self._is_windows = platform.system() == "Windows"
 
     def start(self) -> dict:
+        print(f"Platform: {platform.system()}")
+        print(f"Is Windows: {self._is_windows}")
         if self._is_windows:
             if PtyProcess is None:
                 raise RuntimeError("pywinpty not installed. Run: pip install pywinpty")
@@ -41,7 +43,10 @@ class Wrapper:
             f"{self.binary_path} -i {self.input_file} --solver {self.solver}",
             encoding="utf-8"
         )
-        return self._read_until_waiting()
+        result = self._read_until_waiting()
+        print(f"Raw output: {repr(result['raw'])}")
+        print(f"Options: {result['options']}")
+        return result
 
     def send_choice(self, choice: int) -> dict:
         if self._is_windows:
