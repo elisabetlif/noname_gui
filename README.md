@@ -84,7 +84,10 @@ noname explores all possible protocol runs by building a tree of **symbolic
 states**. Each symbolic state is a snapshot of the execution — it captures 
 what the intruder knows, what possibilities they are tracking, and the current 
 memory. The GUI makes this tree visible and lets you walk through it step by 
-step.
+step. <b>
+
+For example:  <b>
+<img width="592" height="642" alt="tree_gui(1)" src="https://github.com/user-attachments/assets/5352f353-3881-418d-b887-cec505ec6dfe" />
 
 | Node type | Appearance | Action |
 |---|---|---|
@@ -95,24 +98,30 @@ step.
 
 ### Making choices
 
-At each step you may face one of three kinds of choice:
+At each step, you may face one of three kinds of choice:
 
-**Transactions** — which transaction fires next, for example `ReceivePrivateKey` 
+**Transactions** — which transaction fires next, for example, `ReceivePrivateKey` 
 or `Server`.
 
-**Try/Catch** — when a decryption is attempted the execution splits:
+**Try/Catch** — when a decryption is attempted, the execution splits:
 - `Try X15=l1` — the decryption succeeds using this recipe
 - `Catch X15≠inv(pk(x1))` — the decryption fails
 
 **Equivalences** — when the intruder compares two recipes:
 - `l4=no` — the two recipes produce the same message
 - `l4≠no` — the two recipes produce different messages
+  
+For example:
+<img width="1099" height="820" alt="full_gui" src="https://github.com/user-attachments/assets/d71d5137-7102-49d3-b575-f6afca636d0a" />
 
 ### The detail panel
 
 Clicking a node populates the detail panel with the current execution state. 
 Use **Previous** and **Next** to step through the individual phases of the 
 transaction.
+An example:  <b>
+<img width="486" height="656" alt="detail_panel" src="https://github.com/user-attachments/assets/1a73a80e-da7e-43b7-9b8a-a8d8b482c3f5" />
+
 
 | Field | Description |
 |---|---|
@@ -134,6 +143,9 @@ tracking, one column per possibility:
 here. The intruder is comparing what the protocol sent across possibilities 
 to try to distinguish between them
 
+another example with intruder experiments:  <b>
+<img width="425" height="671" alt="detail_panel_intruder(1)" src="https://github.com/user-attachments/assets/01b94b64-6456-4a0c-b49b-912b0a888143" />
+
 ---
 
 ## Outcomes
@@ -145,12 +157,19 @@ highlighted in red. The intruder has learned more than α permits — for exampl
 they determined the exact value of a privacy variable that α only allowed them 
 to know the domain of.
 
+An example:  <b>
+<img width="1094" height="787" alt="gui_privacy_violation" src="https://github.com/user-attachments/assets/7a425403-f733-466f-a56f-18e152793477" />
+
+
 ### Bound reached
 
 If the bound is reached with no violation found, the tree stops and a message 
 is shown. This does **not** mean the protocol is fully secure — it means no 
 violation was found within the set bound. A higher bound might still reveal 
 one.
+
+An example:  <b>
+<img width="1100" height="754" alt="bound_reached" src="https://github.com/user-attachments/assets/e8817e2b-45c8-4fd2-856a-1ba46f0136b6" />
 
 ---
 
