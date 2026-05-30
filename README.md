@@ -86,6 +86,8 @@ what the intruder knows, what possibilities they are tracking, and the current
 memory. The GUI makes this tree visible and lets you walk through it step by 
 step.
 
+![An example of the tree in the GUI](images/tree_gui.png)
+
 | Node type | Appearance | Action |
 |---|---|---|
 | Start | Green circle labelled *Start* | — |
