@@ -86,6 +86,7 @@ what the intruder knows, what possibilities they are tracking, and the current
 memory. The GUI makes this tree visible and lets you walk through it step by 
 step.
 
+<img width="592" height="642" alt="tree_gui(1)" src="https://github.com/user-attachments/assets/5352f353-3881-418d-b887-cec505ec6dfe" />
 
 | Node type | Appearance | Action |
 |---|---|---|
