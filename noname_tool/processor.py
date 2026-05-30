@@ -1,15 +1,14 @@
 import re
 
 
-# splits up noname output from the choice
-# splits on "Current state:"
-# processes each chunk into a dict with the state text, transition description and parsed fields
-# phase is determined by [COMPOSE_CHECK] and [ANALYZE] markers in the raw output
-
+#splits up noname output from the choice
+#splits on "Current state:"
+#processes each chunk into a dict with the state text, transition description and parsed fields
+#phase is determined by [COMPOSE_CHECK] and [ANALYZE] markers in the raw output
 def split_up(raw: str) -> list[dict]:
     raw = raw.replace("\r\n", "\n").replace("\r", "\n")
 
-    # remove echo line at start (single digit or short number)
+    #remove echo line at start (single digit or short number)
     lines = raw.split("\n")
     if lines and lines[0].strip().isdigit():
         lines = lines[1:]
@@ -23,8 +22,8 @@ def split_up(raw: str) -> list[dict]:
         "SatResult:",
     ]
 
-    # split on "Current state:" keeping everything between chunks
-    # so we can detect phase markers as we go
+    #split on "Current state:" keeping everything between chunks
+    #so we can detect phase markers as we go
     current_phase = "protocol"
     steps = []
 
@@ -36,15 +35,15 @@ def split_up(raw: str) -> list[dict]:
         if not part.strip():
             continue
 
-        # check for phase markers appearing in this chunk
-        # once we see [ANALYZE] all subsequent chunks are analyze phase
-        # once we see [COMPOSE_CHECK] but not yet [ANALYZE] they are compose_check
+        #check for phase markers appearing in this chunk
+        #once we see [ANALYZE] all subsequent chunks are analyze phase
+        #once we see [COMPOSE_CHECK] but not yet [ANALYZE] they are compose_check
         if "[ANALYZE]" in part:
             current_phase = "analyze"
         elif "[COMPOSE_CHECK]" in part:
             current_phase = "compose_check"
 
-        # filter terminal phrases and phase markers from content
+        #filter terminal phrases and phase markers from content
         chunk_lines = []
         for line in part.split("\n"):
             stripped = line.strip()
@@ -58,7 +57,7 @@ def split_up(raw: str) -> list[dict]:
         if not chunk:
             continue
 
-        # parse state lines and transition
+        #parse state lines and transition
         lines_list = chunk.split("\n")
         state_lines = []
         transition = ""
@@ -79,13 +78,6 @@ def split_up(raw: str) -> list[dict]:
         if state_lines:
             fields = parse_fields(state_lines)
 
-            # override phase if beta_0 contains ∨ — this means multiple
-            # possibilities exist which only happens during intruder analysis
-            # branching, even if no [ANALYZE] marker appeared in this chunk
-            #beta = fields.get("beta_0", "")
-            #if "∨" in beta and current_phase == "protocol":
-            #    current_phase = "analyze"
-
             steps.append({
                 "state_text": "\n".join(state_lines),
                 "transition": transition,
@@ -99,8 +91,8 @@ def split_up(raw: str) -> list[dict]:
 
 
 
-# joins the lines it receives into one string
-# loops through known field names and runs a regex search
+#joins the lines it receives into one string
+#loops through known field names and runs a regex search
 def parse_fields(state_lines: list[str]) -> dict:
     fields = {}
     field_names = [
@@ -115,16 +107,16 @@ def parse_fields(state_lines: list[str]) -> dict:
     return fields
 
 
-# checks how many "Next" button presses are available
-# for the GUI to use
-# returns the number of intermediate steps in the raw output
+#checks how many "Next" button presses are available
+#for the GUI to use
+#returns the number of intermediate steps in the raw output
 def get_step_count(raw: str) -> int:
     return len(split_up(raw))
 
 
-# for the GUI to use
-# using the current index, the GUI gets what it's supposed to display
-# returns a single step by index, or None if out of range
+#for the GUI to use
+#using the current index, the GUI gets what it's supposed to display
+#returns a single step by index, or None if out of range
 def get_step(raw: str, index: int) -> dict | None:
     steps = split_up(raw)
     if not steps or index < 0 or index >= len(steps):
@@ -132,16 +124,16 @@ def get_step(raw: str, index: int) -> dict | None:
     return steps[index]
 
 
-# extracts the flic (messages and recipes) from the possibilities string
-# returns a list of individual mappings like '-l1->session(x1,n1)'
+#extracts the flic (messages and recipes) from the possibilities string
+#returns a list of individual mappings like '-l1->session(x1,n1)'
 def extract_flic(possibilities: str) -> list[str]:
     if not possibilities or "|" not in possibilities:
         return []
 
-    # get everything after the | separator
+    #get everything after the | separator
     after_process = possibilities.split("|")[1]
 
-    # find the flic — it's between [ and ]
+    #find the flic — it's between [ and ]
     start = after_process.find("[")
     end = after_process.find("]")
     if start == -1 or end == -1:
@@ -151,7 +143,7 @@ def extract_flic(possibilities: str) -> list[str]:
     if not flic:
         return []
 
-    # split on . outside parentheses
+    #split on . outside parentheses
     mappings = []
     current = ""
     depth = 0
@@ -174,11 +166,11 @@ def extract_flic(possibilities: str) -> list[str]:
     return mappings
 
 
-# extracts all possibilities from the raw string, returning
-# a list of dicts with 'process' and 'condition' for each.
-# used to show the intruder what branches exist when noname
-# doesn't know which branch was taken.
-# uses § separator added in Pretty.hs for unambiguous splitting
+#extracts all possibilities from the raw string, returning
+#a list of dicts with 'process' and 'condition' for each.
+#used to show the intruder what branches exist when noname
+#doesn't know which branch was taken.
+#uses § separator added in Pretty.hs for unambiguous splitting
 def extract_all_possibilities(possibilities: str) -> list[dict]:
     if not possibilities:
         return []
@@ -199,7 +191,7 @@ def extract_all_possibilities(possibilities: str) -> list[dict]:
         process_part = p.split("|")[0].strip()
         after_pipe = p.split("|")[1]
 
-        # extract condition at depth 0
+        #extract condition at depth 0
         depth = 0
         condition = ""
         for char in after_pipe:
@@ -214,12 +206,12 @@ def extract_all_possibilities(possibilities: str) -> list[dict]:
             else:
                 condition += char
 
-        # extract flic — between [ and ] after condition
+        #extract flic — between [ and ] after condition
         flic_start = after_pipe.find("[")
         flic_end = after_pipe.find("]")
         flic_str = after_pipe[flic_start + 1:flic_end] if flic_start != -1 and flic_end != -1 else ""
 
-        # split flic on dots outside parentheses
+        #split flic on dots outside parentheses
         flic_items = []
         current = ""
         depth = 0
@@ -239,7 +231,7 @@ def extract_all_possibilities(possibilities: str) -> list[dict]:
         if current.strip():
             flic_items.append(current.strip())
 
-        # split process on dots outside parentheses
+        #split process on dots outside parentheses
         steps = []
         current_step = ""
         depth = 0
@@ -267,45 +259,7 @@ def extract_all_possibilities(possibilities: str) -> list[dict]:
 
     return parsed
 
-def extract_branches(possibilities: str, beta: str) -> list[dict]:
-    if not beta or beta == "⊤":
-        conditions = []
-    else:
-        conditions = []
-        current = ""
-        depth = 0
-        for char in beta:
-            if char == "(":
-                depth += 1
-                current += char
-            elif char == ")":
-                depth -= 1
-                current += char
-            elif char == "∨" and depth == 0:
-                if current.strip():
-                    conditions.append(current.strip())
-                current = ""
-            else:
-                current += char
-        if current.strip():
-            conditions.append(current.strip())
 
-    all_pos = extract_all_possibilities(possibilities)
-
-    if not all_pos:
-        return []
-    if len(all_pos) == 1:
-        return all_pos
-
-    result = []
-    for i, pos in enumerate(all_pos):
-        condition = conditions[i] if i < len(conditions) else pos["condition"]
-        result.append({
-            "condition": condition,
-            "process": pos["process"],
-            "flic": pos["flic"]
-        })
-    return result
 
 #Extracts the violation path from non-interactive noname output
 #Returns dict with Executed, Recipe choice, alpha_0, beta_0 or None.

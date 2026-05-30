@@ -41,16 +41,16 @@ class Session:
     
 
     def rewind(self, node: TreeNode) -> TreeNode:
-        # restart noname and replay up to this node
+        #restart noname and replay up to this node
         self.wrapper.terminate()
         self.wrapper = Wrapper(self.binary_path, self.input_file)
         self.wrapper.start()
 
-        # replay all choices up to this node
+        #replay all choices up to this node
         for past_choice in node.path_from_root():
             self.wrapper.send_choice(past_choice)
 
-        # discard everything after this node
+        #discard everything after this node
         node.child = None
         self.current = node
 
@@ -59,20 +59,20 @@ class Session:
     #terminates the wrapper, creates a fresh one, replays all choices up to the given node using path_from_root(), then makes the new choice
     #Discards everything after the revisited node by setting its child to None
     def revisit(self, node: TreeNode, choice: int) -> TreeNode:
-        # restart noname entirely
+        #restart noname entirely
         self.wrapper.terminate()
         self.wrapper = Wrapper(self.binary_path, self.input_file)
         self.wrapper.start()
 
-        # replay all choices up to this node
+        #replay all choices up to this node
         for past_choice in node.path_from_root():
             self.wrapper.send_choice(past_choice)
 
-        # discard everything after this node
+        #discard everything after this node
         node.child = None
         self.current = node
 
-        # make the new choice
+        #make the new choice
         return self.choose(choice)
 
     #cleans everything up
@@ -86,29 +86,29 @@ class Session:
     #Restarts noname and replays transactions and recipe choices.
     def replay_violation(self, executed: str, recipe_choice: str, checked: str) -> TreeNode:
         
-        # restart noname from scratch
+        #restart noname from scratch
         self.wrapper.terminate()
         self.wrapper = Wrapper(self.binary_path, self.input_file)
         result = self.wrapper.start()
 
-        # update root with fresh state from restart
+        #update root with fresh state from restart
         self.root.state = result["state"]
         self.root.options = result["options"]
         self.root.raw = result["raw"]
         self.root.child = None
         self.current = self.root
 
-        # split executed into individual transactions
+        #split executed into individual transactions
         transactions = [t.strip() for t in executed.split(".") if t.strip()]
 
-        # parse recipe choices — split on ,R to avoid splitting inside function args
+        #parse recipe choices — split on ,R to avoid splitting inside function args
         recipes = []
         if recipe_choice and recipe_choice != "[]":
             inner = recipe_choice[1:-1]
             parts = re.split(r',(?=R\d)', inner)
             recipes = [p.strip() for p in parts]
 
-        # parse checked equivalences e.g. {(l7,nonceErr),(l2,pk(i))}
+        #parse checked equivalences e.g. {(l7,nonceErr),(l2,pk(i))}
         equiv_pairs = set()
         if checked and checked != "{}":
             inner = checked[1:-1]
@@ -137,24 +137,25 @@ class Session:
                 else:
                     current_pair += char
 
-        # single interleaved replay loop —
-        # at each step decide what kind of choice noname is presenting
-        # and handle it accordingly: transaction, recipe, equivalence, or send
+        #single interleaved replay loop —
+        #at each step decide what kind of choice noname is presenting
+        #and handle it accordingly: transaction, recipe, equivalence, or send
         max_iterations = 100
         iterations = 0
-        tx_index = 0  # tracks which transaction we are up to
+        #tracks which transaction we are up to
+        tx_index = 0  
 
         while self.current.options and iterations < max_iterations:
             iterations += 1
             options = self.current.options
 
-            # check what kind of options are being presented
+            #check what kind of options are being presented
             has_transaction = any("Execute the transaction" in opt for opt in options)
             has_recipe = any("The choice of" in opt for opt in options)
             has_equivalence = any("are equivalent" in opt or "are NOT equivalent" in opt for opt in options)
             has_send = any("A message is sent" in opt for opt in options)
 
-            # --- transaction choice ---
+            #transaction choice
             if has_transaction and tx_index < len(transactions):
                 transaction = transactions[tx_index]
                 matched = False
@@ -169,7 +170,7 @@ class Session:
                     return self.current
                 continue
 
-            # --- recipe choice ---
+            #recipe choice
             if has_recipe:
                 matched = False
                 for recipe in recipes:
@@ -181,14 +182,14 @@ class Session:
                     if matched:
                         break
                 if not matched:
-                    # pick first recipe option as fallback
+                    #pick first recipe option as fallback
                     for i, option in enumerate(options):
                         if "The choice of" in option:
                             self.choose(i + 1)
                             break
                 continue
 
-            # --- equivalence choice ---
+            #equivalence choice
             if has_equivalence:
                 chose = False
                 for i, option in enumerate(options):
@@ -202,14 +203,14 @@ class Session:
                             chose = True
                             break
                 if not chose:
-                    # not in checked — choose NOT equivalent
+                    #not in checked — choose NOT equivalent
                     for i, option in enumerate(options):
                         if "are NOT equivalent" in option:
                             self.choose(i + 1)
                             break
                 continue
 
-            # --- send step ---
+            #send step
             if has_send:
                 for i, option in enumerate(options):
                     if "A message is sent" in option:
@@ -217,7 +218,7 @@ class Session:
                         break
                 continue
 
-            # no more choices we know how to handle
+            
             break
 
         return self.current

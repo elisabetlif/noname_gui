@@ -8,18 +8,18 @@ try:
 except ImportError:
     pexpect = None
 
-# lowest layer
-# every method here returns or produces a dict with state, options, raw and terminal
+#lowest layer
+#every method here returns or produces a dict with state, options, raw and terminal
 
 class Wrapper:
-    # stores the binary path, input file and solver. Process starts as None
+    #stores the binary path, input file and solver. Process starts as None
     def __init__(self, binary_path: str, input_file: str, solver: str = "cvc5"):
         self.binary_path = binary_path
         self.input_file = input_file
         self.solver = solver
         self.process = None
 
-    # spawns noname using pexpect with the -i flag, then immediately reads until noname is waiting for input
+    #spawns noname using pexpect with the -i flag, then immediately reads until noname is waiting for input
     def start(self) -> dict:
         if pexpect is None:
             raise RuntimeError("pexpect not installed. Run: pip install pexpect")
@@ -29,27 +29,27 @@ class Wrapper:
         )
         return self._read_until_waiting()
 
-    # sends a number to noname via the PTY, then reads until noname is waiting again
+    #sends a number to noname via the PTY, then reads until noname is waiting again
     def send_choice(self, choice: int) -> dict:
         self.process.sendline(str(choice))
         return self._read_until_waiting()
 
-    # the core reading loop. Uses pexpect's expect with a 0.5 second timeout.
-    # keeps reading lines until noname goes quiet, then returns. If it sees EOF noname has ended.
-    # if it times out and the last line looks like a numbered option, noname is waiting for input
+    #the core reading loop. Uses pexpect's expect with a 0.5 second timeout.
+    #keeps reading lines until noname goes quiet, then returns. If it sees EOF noname has ended.
+    #if it times out and the last line looks like a numbered option, noname is waiting for input
     def _read_until_waiting(self) -> dict:
         lines = []
         while True:
             try:
                 self.process.expect([r'\n', pexpect.EOF], timeout=0.5)
 
-                # if after is EOF class itself, noname has closed
+                #if after is EOF class itself, noname has closed
                 if self.process.after is pexpect.EOF:
                     if self.process.before:
                         lines.append(self.process.before.rstrip("\n\r"))
                     return self._parse_output(lines, terminal=True)
 
-                # safe to concatenate now since after is a string newline
+                #safe to concatenate now since after is a string newline
                 line = self.process.before + self.process.after
                 if isinstance(line, str):
                     lines.append(line.rstrip("\n\r"))
@@ -60,8 +60,7 @@ class Wrapper:
                 if self._is_waiting(lines):
                     return self._parse_output(lines, terminal=False)
 
-    # checks if the last non-empty line matches "1. Something" -> meaning noname has printed
-    # all its options and is now blocked waiting
+    #checks if the last non-empty line matches "1. Something" -> meaning noname has printed all its options and is now blocked waiting
     def _is_waiting(self, lines: list[str]) -> bool:
         non_empty = [i for i in lines if i.strip()]
         if not non_empty:
@@ -69,8 +68,8 @@ class Wrapper:
         last = non_empty[-1]
         return bool(re.match(r"^\d+\.\s", last))
 
-    # takes the accumulated lines and splits them into structured data. Extracts the state fields
-    # into a dict, collects the numbered options into a list and keeps everything raw
+    #takes the accumulated lines and splits them into structured data. Extracts the state fields
+    #into a dict, collects the numbered options into a list and keeps everything raw
     def _parse_output(self, lines: list[str], terminal: bool) -> dict:
         state = {}
         options = []
@@ -108,13 +107,13 @@ class Wrapper:
             "raw": "\n".join(lines)
         }
 
-    # kills the noname process
+    #kills the noname process
     def terminate(self):
         if self.process:
             self.process.terminate()
             self.process = None
 
-    # run noname non-interactively and return full output
+    #run noname non-interactively and return full output
     def run_automatic(self) -> str:
         result = subprocess.run(
             [self.binary_path, self.input_file, "--solver", self.solver],
@@ -123,5 +122,5 @@ class Wrapper:
             encoding="utf-8",
             timeout=60
         )
-        # combine stdout and stderr since noname splits output between them
+        #combine stdout and stderr since noname splits output between them
         return result.stdout + result.stderr

@@ -10,9 +10,9 @@ import re
 
 
 
-# top layer -> talks only to session, never to the wrapper or tree directly
+#top layer -> talks only to session, never to the wrapper or tree directly
 
-# globals
+#globals
 session = None
 clickable_nodes = []
 current_node = None
@@ -21,14 +21,14 @@ current_steps = []
 red_highlight_theme = None
 default_input_theme = None
 
-# fixed center point — does not change regardless of tree width
+#fixed center point — does not change regardless of tree width
 CENTER_X = 550
 
 
 
-# so all symbols from noname show up in GUI
-# on Linux, uses fc-match to find a suitable font dynamically
-# falls back to hardcoded paths if fc-match is not available
+#so all symbols from noname show up in GUI
+#on Linux, uses fc-match to find a suitable font dynamically
+#falls back to hardcoded paths if fc-match is not available
 def get_system_font() -> str | None:
     system = platform.system()
     if system == "Darwin":
@@ -37,8 +37,8 @@ def get_system_font() -> str | None:
             "/System/Library/Fonts/Supplemental/Geneva.ttf",
         ]
     elif system == "Linux":
-        # try fc-match first — works on any distro with fontconfig installed
-        # asks for a font that supports Greek characters (covers α, β, γ etc.)
+        #try fc-match first
+        #asks for a font that supports Greek characters (covers α, β, γ etc.)
         try:
             result = subprocess.run(
                 ["fc-match", "--format=%{file}", ":lang=el:spacing=proportional"],
@@ -51,19 +51,19 @@ def get_system_font() -> str | None:
         except FileNotFoundError:
             pass
 
-        # fallback to hardcoded paths for common distros
+        #fallback to hardcoded paths for common distros
         candidates = [
-            # Ubuntu/Debian
+            #Ubuntu/Debian
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            # Arch Linux (ttf-dejavu)
+            #Arch Linux (ttf-dejavu)
             "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-            # Arch Linux (ttf-dejavu alternative path)
+            #Arch Linux (ttf-dejavu alternative path)
             "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            # Arch Linux (noto-fonts)
+            #Arch Linux (noto-fonts)
             "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-            # Arch Linux (ttf-liberation)
+            #Arch Linux (ttf-liberation)
             "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
-            # Fedora/RHEL
+            #Fedora/RHEL
             "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
         ]
     else:
@@ -74,9 +74,9 @@ def get_system_font() -> str | None:
     return None
 
 
-# extracts the human readable name from the full option string
+#extracts the human readable name from the full option string
 def calculate_label(option: str, flic: list = None, all_options: list = None) -> str:
-    # equivalence options
+    #equivalence options
     m = re.search(r'recipes (\S+) and (\S+) are NOT equivalent', option)
     if m:
         a = m.group(1).rstrip(".")
@@ -97,8 +97,8 @@ def calculate_label(option: str, flic: list = None, all_options: list = None) ->
                 arrow_pos = full.index("->")
                 r_var = full[:arrow_pos]
                 raw_value = full[arrow_pos + 2:]
-                # extract value up to first comma at depth 0
-                # to avoid including subsequent recipe assignments
+                #extract value up to first comma at depth 0
+                #to avoid including subsequent recipe assignments
                 depth = 0
                 end = len(raw_value)
                 for i, c in enumerate(raw_value):
@@ -110,7 +110,7 @@ def calculate_label(option: str, flic: list = None, all_options: list = None) ->
                         end = i
                         break
                 value = raw_value[:end]
-                # get X var from sibling catch option
+                #get X var from sibling catch option
                 x_var = None
                 if all_options:
                     for other in all_options:
@@ -136,14 +136,12 @@ def calculate_label(option: str, flic: list = None, all_options: list = None) ->
     return option
 
 
-# checks if a mouse click falls within a circle using the distance formula
+#checks if a mouse click falls within a circle using the distance formula
 def is_inside_circle(mouse_x, mouse_y, cx, cy, radius):
     return (mouse_x - cx) ** 2 + (mouse_y - cy) ** 2 <= radius ** 2
 
 
-# returns the rendered pixel width of a string using the active Dear PyGui font.
-# falls back to a character-count estimate if get_text_size returns None,
-# which can happen on the first draw call before the font is fully active.
+#returns the rendered pixel width of a string 
 def get_text_width(line: str) -> float:
     size = dpg.get_text_size(line)
     if size is None:
@@ -155,7 +153,7 @@ def refresh_step_display():
     global current_steps, current_step_index, current_node
 
     if not current_steps:
-        # no intermediate steps — show node.state directly
+        #no intermediate steps — show node.state directly
         if current_node:
             state = current_node.state
             dpg.set_value("detail_step_counter", "Step 1 of 1")
@@ -166,9 +164,9 @@ def refresh_step_display():
             dpg.set_value("detail_recipe", f"Recipe choice: {state.get('Recipe choice', '')}")
             dpg.set_value("detail_gamma", f"gamma_0: {state.get('gamma_0', '')}")
             dpg.set_value("detail_checked", f"Checked: {state.get('Checked', '')}")
-            #dpg.set_value("detail_raw", current_node.raw)
+        
 
-            # apply theme based on terminal state
+            #apply theme based on terminal state
             if current_node.terminal and "Privacy violation found" in current_node.raw:
                 dpg.bind_item_theme("detail_alpha", red_highlight_theme)
                 dpg.bind_item_theme("detail_beta", red_highlight_theme)
@@ -176,14 +174,14 @@ def refresh_step_display():
                 dpg.bind_item_theme("detail_alpha", default_input_theme)
                 dpg.bind_item_theme("detail_beta", default_input_theme)
 
-            # override transition with bound reached message if present
+            #override transition with bound reached message if present
             if current_node.terminal:
                 for line in current_node.raw.split("\n"):
                     if line.strip().startswith("Bound reached"):
                         dpg.set_value("detail_transition", line.strip())
                         break
 
-            # rebuild table with flic and analysis
+            #rebuild table with flic and analysis
             dpg.delete_item("intruder_table", children_only=True)
             all_pos = extract_all_possibilities(state.get("Possibilities", ""))
             if not all_pos:
@@ -219,7 +217,7 @@ def refresh_step_display():
     dpg.set_value("detail_gamma", f"gamma_0: {fields.get('gamma_0', '')}")
     dpg.set_value("detail_checked", f"Checked: {fields.get('Checked', '')}")
 
-    # apply theme based on terminal state
+    #apply theme based on terminal state
     if current_node and current_node.terminal and "Privacy violation found" in current_node.raw:
         dpg.bind_item_theme("detail_alpha", red_highlight_theme)
         dpg.bind_item_theme("detail_beta", red_highlight_theme)
@@ -232,14 +230,14 @@ def refresh_step_display():
     else:
         dpg.set_value("detail_transition", f"{step['transition']}")
 
-    # override transition with bound reached message if present
+    #override transition with bound reached message if present
     if current_node and current_node.terminal:
         for line in current_node.raw.split("\n"):
             if line.strip().startswith("Bound reached"):
                 dpg.set_value("detail_transition", line.strip())
                 break
 
-    # always rebuild the table using all possibilities from noname output
+    #always rebuild the table using all possibilities from noname output
     dpg.delete_item("intruder_table", children_only=True)
 
     all_pos = extract_all_possibilities(fields.get("Possibilities", ""))
@@ -279,17 +277,17 @@ def refresh_step_display():
         dpg.enable_item("btn_next")
 
 
-# takes a TreeNode and populates the right side panel with its state fields
-# all steps (protocol and intruder) are kept in one unified list for navigation
+#takes a TreeNode and populates the right side panel with its state fields
+#all steps (protocol and intruder) are kept in one unified list for navigation
 def update_detail_panel(node):
     global current_node, current_step_index, current_steps
     current_node = node
     current_steps = split_up(node.raw)
 
-    # for terminal violation nodes, merge all steps into one:
-    # take the complete fields from the last step,
-    # the transition from the first step,
-    # and prepend the "Privacy violation found" line if present
+    #for terminal violation nodes, merge all steps into one:
+    #take the complete fields from the last step,
+    #the transition from the first step,
+    #and prepend the "Privacy violation found" line if present
     if node.terminal and len(current_steps) >= 2:
         violation_line = ""
         for line in node.raw.split("\n"):
@@ -326,8 +324,8 @@ def on_prev(sender, app_data):
         refresh_step_display()
 
 
-# called when the viewport is resized — adjusts all panels to fill the new size
-# tree panel gets 60% of width, detail panel gets the remaining 40%
+#called when the viewport is resized — adjusts all panels to fill the new size
+#tree panel gets 60% of width, detail panel gets the remaining 40%
 def on_resize(sender, app_data):
     viewport_width = dpg.get_viewport_width()
     viewport_height = dpg.get_viewport_height()
@@ -337,10 +335,10 @@ def on_resize(sender, app_data):
 
     dpg.configure_item("tree_window", width=tree_width, height=viewport_height - 50)
     dpg.configure_item("detail_window", width=detail_width, height=viewport_height - 50)
-    # resize table container proportionally
+    #resize table container proportionally
     dpg.configure_item("table_window", height=int(viewport_height * 0.3))
 
-# calculates how tall the drawlist needs to be so the tree doesn't get clipped
+#calculates how tall the drawlist needs to be so the tree doesn't get clipped
 def get_drawlist_height() -> int:
     depth = session.current.depth()
     active_path = session.current.active_path()
@@ -354,7 +352,7 @@ def get_drawlist_height() -> int:
     return max(min_height, calculated)
 
 
-# calculates how wide the drawlist needs to be
+#calculates how wide the drawlist needs to be
 def get_drawlist_width() -> int:
     min_width = 900
     active_path = session.current.active_path()
@@ -365,7 +363,7 @@ def get_drawlist_width() -> int:
         spread = max(base_spread / (2 ** max(d - 1, 0)), 100) if d > 0 else 0
         total = len(node.options) if node.options else 1
         x = calculate_node_x(node)
-        # account for label width on rightmost nodes
+        #account for label width on rightmost nodes
         max_right = max(max_right, x + spread * total / 2 + 200)
     calculated = int(max_right + 500)
     return max(min_width, calculated)
@@ -408,9 +406,10 @@ def wrap_text(text: str, max_chars: int = 8) -> list[str]:
     return lines
 
 
-# Calculate the x position of a node based on its path from root.
-# Each choice shifts the position left or right, with spread halving at each depth.
-# Uses fixed CENTER_X so the tree never shifts unexpectedly.
+#Calculate the x position of a node based on its path from root.
+#Each choice shifts the position left or right, with spread halving at each depth.
+#Spread has a minimum of 150px to prevent nodes from crowding together.
+#Uses fixed CENTER_X so the tree never shifts unexpectedly.
 def calculate_node_x(node, base_spread: int = 200) -> float:
     x = float(CENTER_X)
     path_node = node
@@ -420,7 +419,7 @@ def calculate_node_x(node, base_spread: int = 200) -> float:
         path_node = path_node.parent
     ancestors = list(reversed(ancestors))
 
-    current = path_node  # root
+    current = path_node  
     for ancestor in ancestors:
         total = len(current.options)
         depth = ancestor.depth()
@@ -432,24 +431,24 @@ def calculate_node_x(node, base_spread: int = 200) -> float:
     return x
 
 
-# Calculate the x position of a grey circle representing an unchosen option.
-# Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made.
+#Calculate the x position of a grey circle representing an unchosen option.
+#Uses the same logic as calculate_node_x — the grey circle sits where the green node WOULD be if that choice had been made.
 def calculate_grey_x(parent_node, choice_num: int) -> float:
     parent_x = calculate_node_x(parent_node)
     total = len(parent_node.options)
     depth = parent_node.depth()
-    # use smaller spread at shallow depths, larger at deeper depths
+    #use smaller spread at shallow depths, larger at deeper depths
     base = max(200, min(total * 100, 300 + depth * 50))
     spread = max(base / (2 ** max(depth, 0)), 100)
     offset = (choice_num - (total + 1) / 2) * spread
     return parent_x + offset
 
 
-# clears the drawlist entirely and redraws everything from scratch.
-# walks active_path() to draw green circles and connecting lines,
-# then draws grey circles for unchosen options at every level.
-# also rebuilds clickable_nodes so click detection works on the new layout.
-# uses dpg.get_text_size() for accurate label positioning across platforms
+#clears the drawlist entirely and redraws everything from scratch.
+#walks active_path() to draw green circles and connecting lines,
+#then draws grey circles for unchosen options at every level.
+#also rebuilds clickable_nodes so click detection works on the new layout.
+#uses dpg.get_text_size() for accurate label positioning across platforms
 def redraw_tree():
     global clickable_nodes
     clickable_nodes = []
@@ -467,19 +466,20 @@ def redraw_tree():
     level_height = max(200, max_options * 55)
     green_radius = 30
     grey_radius = 15
-    center_threshold = 20  # px — nodes within this distance of parent x get label below
+    #px - nodes within this distance of parent x get label below
+    center_threshold = 20  
 
    
-    # first pass — calculate positions for all green nodes
+    #first pass -ccalculate positions for all green nodes
     green_positions = {}
     for node in active_path:
         x = calculate_node_x(node)
         y = start_y + node.depth() * level_height
         green_positions[id(node)] = (x, y)
 
-    # draw lines first so circles appear on top
+    #draw lines first so circles appear on top
 
-    # green to green lines
+    #green to green lines
     for i, node in enumerate(active_path):
         if i > 0:
             parent = active_path[i - 1]
@@ -492,7 +492,7 @@ def redraw_tree():
                 thickness=2
             )
 
-    # lines from green nodes to their unchosen grey circles
+    #lines from green nodes to their unchosen grey circles
     for i, node in enumerate(active_path):
         gx, gy = green_positions[id(node)]
 
@@ -512,7 +512,7 @@ def redraw_tree():
                     thickness=1
                 )
 
-    # lines from current node to its available options
+    #lines from current node to its available options
     current = session.current
     if not current.terminal:
         cx, cy = green_positions[id(current)]
@@ -529,7 +529,7 @@ def redraw_tree():
                 thickness=1
             )
 
-    # draw unchosen grey circles at each green node on the active path
+    #draw unchosen grey circles at each green node on the active path
     for i, node in enumerate(active_path):
         gx, gy = green_positions[id(node)]
 
@@ -555,11 +555,11 @@ def redraw_tree():
                     tag=tag
                 )
 
-                # place label based on position relative to parent
-                # nodes close to center get label below to avoid overlap
+                #place label based on position relative to parent
+                #nodes close to center get label below to avoid overlap
                 text_y = grey_y - (len(lines) * 20) / 2
                 if grey_x < gx - center_threshold:
-                    # clearly left — label to the left
+                    #clearly left — label to the left
                     for k, line in enumerate(lines):
                         text_width = get_text_width(line)
                         dpg.draw_text(
@@ -571,7 +571,7 @@ def redraw_tree():
                             parent="tree_drawlist"
                         )
                 elif grey_x > gx + center_threshold:
-                    # clearly right — label to the right
+                    #clearly right - label to the right
                     for k, line in enumerate(lines):
                         dpg.draw_text(
                             (grey_x + grey_radius + 5,
@@ -582,7 +582,7 @@ def redraw_tree():
                             parent="tree_drawlist"
                         )
                 else:
-                    # close to center — label below to avoid overlap
+                    #close to center - label below to avoid overlap
                     for k, line in enumerate(lines):
                         text_width = get_text_width(line)
                         dpg.draw_text(
@@ -604,11 +604,11 @@ def redraw_tree():
                     "node": node
                 })
 
-    # draw current node's available options as full size grey circles
+    #draw current node's available options as full size grey circles
     if not current.terminal:
         cx, cy = green_positions[id(current)]
 
-        # get flic from current node's last step for Try label enrichment
+        #get flic from current node's last step for Try label enrichment
         current_flic = []
         if session.current.raw:
             current_steps_raw = split_up(session.current.raw)
@@ -635,11 +635,11 @@ def redraw_tree():
                 tag=tag
             )
 
-            # place label based on position relative to parent
-            # nodes close to center get label below to avoid overlap
+            #place label based on position relative to parent
+            #nodes close to center get label below to avoid overlap
             text_y = grey_y - (len(lines) * 20) / 2
             if grey_x < cx - center_threshold:
-                # clearly left — label to the left
+                #clearly left — label to the left
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
@@ -651,7 +651,7 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
             elif grey_x > cx + center_threshold:
-                # clearly right — label to the right
+                #clearly right - label to the right
                 for k, line in enumerate(lines):
                     dpg.draw_text(
                         (grey_x + green_radius + 15,
@@ -662,7 +662,7 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
             else:
-                # close to center — label below to avoid overlap
+                #close to center - label below to avoid overlap
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
@@ -683,7 +683,7 @@ def redraw_tree():
                 "node": current
             })
 
-    # draw green circles last so they appear on top of everything
+    #draw green circles last so they appear on top of everything
     for i, node in enumerate(active_path):
         gx, gy = green_positions[id(node)]
 
@@ -705,7 +705,7 @@ def redraw_tree():
         lines = wrap_text(label)
 
         if i == 0:
-            # root node — always above
+            #root node — always above
             for k, line in enumerate(reversed(lines)):
                 dpg.draw_text(
                     (gx - 25, gy - green_radius - 18 - (k * 16)),
@@ -715,7 +715,7 @@ def redraw_tree():
                     parent="tree_drawlist"
                 )
         elif node is session.current and node.terminal:
-            # terminal node — always below
+            #terminal node — always below
             for k, line in enumerate(lines):
                 dpg.draw_text(
                     (gx - 25, gy + green_radius + 5 + (k * 16)),
@@ -725,13 +725,13 @@ def redraw_tree():
                     parent="tree_drawlist"
                 )
         else:
-            # non-root non-terminal — place label above on outer side
-            # to avoid overlap with lines going down to children
+            #non-root non-terminal — place label above on outer side
+            #to avoid overlap with lines going down to children
             parent = active_path[i - 1]
             px, _ = green_positions[id(parent)]
 
             if gx < px - center_threshold:
-                # clearly left of parent — label above, right-aligned
+                #clearly left of parent — label above, right-aligned
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
@@ -743,7 +743,7 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
             elif gx > px + center_threshold:
-                # clearly right of parent — label above, starts at right edge
+                #clearly right of parent - label above, starts at right edge
                 for k, line in enumerate(reversed(lines)):
                     dpg.draw_text(
                         (gx + green_radius + 5,
@@ -754,7 +754,7 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
             else:
-                #directly below parent — place label to the left of circle
+                #directly below parent - place label to the left of circle
                 for k, line in enumerate(lines):
                     text_width = get_text_width(line)
                     dpg.draw_text(
@@ -766,16 +766,16 @@ def redraw_tree():
                         parent="tree_drawlist"
                     )
 
-# called whenever the user clicks on the drawlist
-# checks grey circles first — if so calls session.choose() or session.revisit() and redraws
-# then checks green circles:
+#called whenever the user clicks on the drawlist
+#checks grey circles first — if so calls session.choose() or session.revisit() and redraws
+#then checks green circles:
 #   clicking current node — just shows its data
 #   clicking an older node — rewinds to that point, discarding everything after it
 def on_tree_click(sender, app_data):
     mouse_pos = dpg.get_drawing_mouse_pos()
     mx, my = mouse_pos[0], mouse_pos[1]
 
-    # check clickable grey circles first
+    #check clickable grey circles first
     for item in clickable_nodes:
         if is_inside_circle(mx, my, item["x"], item["y"], item["radius"]):
             if item["node"] is session.current:
@@ -786,7 +786,7 @@ def on_tree_click(sender, app_data):
             redraw_tree()
             return
 
-    # check green circles on active path
+    #check green circles on active path
     active_path = session.current.active_path()
     green_radius = 30
     start_y = 60
@@ -797,18 +797,18 @@ def on_tree_click(sender, app_data):
         gy = start_y + node.depth() * level_height
         if is_inside_circle(mx, my, gx, gy, green_radius):
             if node is session.current:
-                # clicking current node — just show its data, no reset
+                #clicking current node — just show its data, no reset
                 update_detail_panel(node)
             else:
-                # clicking older node — rewind to that point
-                # discards all nodes after it and restarts noname up to that point
+                #clicking older node — rewind to that point
+                #discards all nodes after it and restarts noname up to that point
                 rewound_node = session.rewind(node)
                 update_detail_panel(rewound_node)
                 redraw_tree()
             return
 
 
-# creates empty drawlist container
+#creates empty drawlist container
 def setup_tree_panel():
     with dpg.drawlist(width=900, height=650, tag="tree_drawlist"):
         pass
@@ -817,10 +817,10 @@ def setup_tree_panel():
 def on_run_automatic(sender, app_data):
     dpg.set_value("auto_result", "Running...")
 
-    # run noname non-interactively
+    #run noname non-interactively
     output = session.wrapper.run_automatic()
 
-    # parse violation
+    #parse violation
     violation = parse_violation(output)
 
     if not violation:
@@ -836,7 +836,7 @@ def on_run_automatic(sender, app_data):
     dpg.set_value("auto_result",
         f"Violation found!\nalpha: {alpha}\nbeta: {beta}\nReplaying path...")
 
-    # replay the violation path in the tree
+    #replay the violation path in the tree
     node = session.replay_violation(
         executed,
         recipe_choice,
@@ -855,7 +855,7 @@ def setup_detail_panel():
         dpg.add_text("Select a node to view details", tag="detail_text")
         dpg.add_separator()
 
-        # step navigation — covers both protocol and intruder analysis steps
+        #step navigation - covers both protocol and intruder analysis steps
         dpg.add_text("Step 0 of 0", tag="detail_step_counter")
         with dpg.group(horizontal=True):
             dpg.add_button(label="Previous", tag="btn_prev", callback=on_prev)
@@ -863,7 +863,7 @@ def setup_detail_panel():
         dpg.disable_item("btn_prev")
         dpg.disable_item("btn_next")
 
-        # button for making noname run non-interactively
+        #button for making noname run non-interactively
         dpg.add_separator()
         dpg.add_button(
             label="Run noname (automatic mode)",
@@ -873,7 +873,7 @@ def setup_detail_panel():
         )
         dpg.add_text("", tag="auto_result", wrap=370)
 
-        # state fields
+        #state fields
         dpg.add_separator()
         dpg.add_text("Executed: ", tag="detail_executed", wrap=370)
         dpg.add_input_text(tag="detail_alpha", default_value="alpha_0: ", width=-1, readonly=True)
@@ -882,14 +882,14 @@ def setup_detail_panel():
         dpg.add_text("Recipe choice: ", tag="detail_recipe", wrap=370)
         dpg.add_text("Checked: ", tag="detail_checked", wrap=370)
 
-        # transition description
+        #transition description
         dpg.add_separator()
         dpg.add_text("Transition:", wrap=370)
         dpg.add_text("", tag="detail_transition", wrap=370)
 
-        # flic and intruder analysis table
-        # flic shown for all steps, analysis row shows current possibilities
-        # multiple columns when branches exist, single column otherwise
+        #flic and intruder analysis table
+        #flic shown for all steps, analysis row shows current possibilities
+        #multiple columns when branches exist, single column otherwise
         dpg.add_separator()
         with dpg.child_window(height=300, border=False, tag="table_window"):
             with dpg.table(tag="intruder_table",
@@ -912,7 +912,7 @@ def main():
         sys.exit(1)
 
     input_file = sys.argv[1]
-    #session = Session("./noname", input_file)
+   
 
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     system = platform.system()
@@ -951,10 +951,10 @@ def main():
     if font_path:
         with dpg.font_registry():
             with dpg.font(font_path, 20) as default_font:
-                dpg.add_font_range(0x2200, 0x22FF)  # mathematical operators
-                dpg.add_font_range(0x0370, 0x03FF)  # Greek letters (α, β, γ)
-                dpg.add_font_range(0x2700, 0x27BF)  # ✓ ★
-                dpg.add_font_range(0x2600, 0x26FF)  # miscellaneous symbols
+                dpg.add_font_range(0x2200, 0x22FF)  #mathematical operators
+                dpg.add_font_range(0x0370, 0x03FF)  #Greek letters (α, β, γ)
+                dpg.add_font_range(0x2700, 0x27BF)  #✓ ★
+                dpg.add_font_range(0x2600, 0x26FF)  #all kinds of symbols
         dpg.bind_font(default_font)
     else:
         print("Warning: no suitable system font found, some symbols may not display correctly")
@@ -965,11 +965,11 @@ def main():
     dpg.create_viewport(title="noname GUI", width=1100, height=700)
     dpg.setup_dearpygui()
 
-    # set viewport resize callback so all panels adjust when window is resized
+    #set viewport resize callback so all panels adjust when window is resized
     dpg.set_viewport_resize_callback(on_resize)
 
     with dpg.window(label="noname", tag="main_window"):
-        # set as primary window so it fills the entire viewport automatically
+        #set as primary window so it fills the entire viewport automatically
         dpg.set_primary_window("main_window", True)
         with dpg.group(horizontal=True):
             with dpg.child_window(width=600, height=650, tag="tree_window",
